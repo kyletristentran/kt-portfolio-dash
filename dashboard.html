@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kyle's REIT - Real Estate Investment Trust Dashboard</title>
+    <!-- Icons & Bootstrap -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Axios for API calls -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <style>
+        /* --- Core brand colours --- */
+        :root {
+            --primary-navy: #0C223A;
+            --accent-baby-blue: #87CEEB;
+            --light-baby-blue: #B0E0E6;
+            --trea-gray: #f5f5f5;
+            --trea-dark: #1a1a1a;
+            --trea-light-gray: #e9ecef;
+            --trea-success: #198754;
+            --trea-warning: #ffc107;
+            --trea-info: #0dcaf0;
+            --trea-danger: #dc3545;
+        }
+
+        body {
+            font-family: "Times New Roman", Georgia, serif;
+            scroll-behavior: smooth;
+            background-color: #ffffff;
+            color: #212529;
+        }
+
+        /* --- Login Page --- */
+        .login-background {
+            min-height: 100vh;
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
+                        url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 0;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            padding: 3rem;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo {
+            background-color: var(--primary-navy);
+            color: white;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* --- Main Navigation --- */
+        .main-navbar {
+            background-color: var(--primary-navy);
+            letter-spacing: .5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .main-navbar .navbar-brand,
+        .main-navbar .nav-link {
+            color: #ffffff !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: .9rem;
+        }
+
+        .main-navbar .nav-link:hover {
+            color: var(--accent-baby-blue) !important;
+        }
+
+        .main-navbar .nav-link.active {
+            background-color: rgba(135, 206, 235, 0.2);
+            color: #ffffff !important;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background-color: var(--trea-gray);
+            min-height: calc(100vh - 56px);
+            padding: 2rem 1rem;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: .9rem;
+            letter-spacing: .5px;
+            color: var(--primary-navy);
+            border-bottom: 2px solid var(--accent-baby-blue);
+            padding-bottom: .5rem;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: .5rem;
+        }
+
+        .sidebar-link {
+            color: #495057;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: .5rem .75rem;
+            border-radius: 0;
+            transition: all 0.2s;
+            font-size: .95rem;
+        }
+
+        .sidebar-link:hover {
+            background-color: rgba(135, 206, 235, 0.1);
+            color: var(--primary-navy);
+            text-decoration: none;
+        }
+
+        .sidebar-link.active {
+            background-color: var(--primary-navy);
+            color: white;
+        }
+
+        .sidebar-link i {
+            width: 20px;
+            margin-right: .75rem;
+            text-align: center;
+        }
+
+        /* --- Content Area --- */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            background-color: #f8f9fa;
+            min-height: calc(100vh - 56px);
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, rgba(12, 34, 58, 0.05) 0%, rgba(135, 206, 235, 0.05) 100%);
+            border-bottom: 3px solid var(--primary-navy);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-navy);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-top: .5rem;
+        }
+
+        .section-title {
+            border-bottom: 2px solid var(--accent-baby-blue);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            padding-bottom: .5rem;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: .5px;
+            color: var(--primary-navy);
+        }
+
+        /* --- KPI Cards --- */
+        .metric-card {
+            background: white;
+            border-left: 4px solid var(--accent-baby-blue);
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s;
+            height: 100%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(135, 206, 235, 0.3);
+            border-left-color: var(--primary-navy);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-navy);
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-size: .9rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-top: .5rem;
+        }
+
+        .metric-change {
+            color: var(--trea-success);
+            font-size: .85rem;
+            margin-top: .25rem;
+        }
+
+        /* --- Alert Section --- */
+        .alert-section {
+            background: #f0f8ff;
+            border-left: 4px solid var(--accent-baby-blue);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .alert-header {
+            font-weight: bold;
+            color: var(--primary-navy);
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-item {
+            color: #495057;
+        }
+
+        /* --- Tabs --- */
+        .nav-tabs {
+            border-bottom: 2px solid var(--primary-navy);
+            background-color: transparent;
+            padding: 0;
+            margin-bottom: 2rem;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 0;
+            color: #666;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: .9rem;
+            letter-spacing: .5px;
+            padding: .75rem 1.5rem;
+            background-color: transparent;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .nav-tabs .nav-link:hover {
+            border-color: transparent;
+            color: var(--accent-baby-blue);
+            background-color: transparent;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-navy);
+            background-color: transparent;
+            border: none;
+            border-bottom: 2px solid var(--accent-baby-blue);
+        }
+
+        /* --- Pills for sub-navigation --- */
+        .nav-pills .nav-link {
+            border-radius: 0;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: .85rem;
+            letter-spacing: .3px;
+            padding: .5rem 1rem;
+            background-color: transparent;
+            border: 1px solid #dee2e6;
+            margin-right: .5rem;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: var(--light-baby-blue);
+            color: var(--primary-navy);
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: var(--primary-navy);
+            color: white;
+            border-color: var(--primary-navy);
+        }
+
+        /* --- Cards --- */
+        .content-card {
+            background: #ffffff;
+            border: 1px solid var(--trea-light-gray);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: box-shadow 0.3s;
+        }
+
+        .content-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* --- Event/Financial Cards --- */
+        .financial-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 100%;
+            border-top: 3px solid var(--accent-baby-blue);
+        }
+
+        .financial-card:hover {
+            box-shadow: 0 4px 12px rgba(135, 206, 235, 0.3);
+        }
+
+        .financial-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--primary-navy);
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        /* --- Table Hover States --- */
+        .data-table tbody tr:hover {
+            background-color: rgba(135, 206, 235, 0.1);
+        }
+
+        /* --- Input Group --- */
+        .input-group-text {
+            background-color: var(--accent-baby-blue);
+            color: var(--primary-navy);
+            border: 1px solid var(--accent-baby-blue);
+        }
+        .data-table {
+            font-size: .95rem;
+        }
+
+        .data-table thead {
+            background-color: var(--trea-gray);
+            text-transform: uppercase;
+            font-size: .85rem;
+            letter-spacing: .5px;
+        }
+
+        .data-table th {
+            border: none;
+            padding: 1rem;
+            font-weight: 600;
+        }
+
+        /* --- Buttons --- */
+        .btn-trea {
+            background-color: var(--primary-navy);
+            color: white;
+            border: none;
+            padding: .5rem 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-size: .85rem;
+            transition: all 0.3s;
+        }
+
+        .btn-trea:hover {
+            background-color: var(--accent-baby-blue);
+            color: var(--primary-navy);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-trea-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary-navy);
+            color: var(--primary-navy);
+            padding: .5rem 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-size: .85rem;
+        }
+
+        .btn-trea-outline:hover {
+            background-color: var(--accent-baby-blue);
+            color: var(--primary-navy);
+            border-color: var(--accent-baby-blue);
+        }
+
+        /* --- Forms --- */
+        .form-control,
+        .form-select {
+            border-radius: 0;
+            border: 1px solid #ced4da;
+            font-size: .95rem;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--accent-baby-blue);
+            box-shadow: 0 0 0 0.2rem rgba(135, 206, 235, 0.25);
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: .9rem;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            color: #495057;
+            margin-bottom: .5rem;
+        }
+
+        /* --- Property Cards --- */
+        .property-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-top: 3px solid var(--accent-baby-blue);
+        }
+
+        .property-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .property-name {
+            color: var(--primary-navy);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: .5rem;
+        }
+
+        /* --- Charts --- */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        /* --- Utilities --- */
+        .text-trea {
+            color: var(--trea-red) !important;
+        }
+
+        .bg-trea-gray {
+            background-color: var(--trea-gray) !important;
+        }
+        .spinner-border {
+            color: var(--trea-red);
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--trea-gray);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--trea-red);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b0000;
+        }
+
+        /* --- Badges and Accents --- */
+        .badge {
+            padding: .35rem .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: .75rem;
+            letter-spacing: .3px;
+            border-radius: 0;
+        }
+
+        .text-accent {
+            color: var(--accent-baby-blue) !important;
+        }
+
+        .bg-accent {
+            background-color: var(--accent-baby-blue) !important;
+            color: var(--primary-navy) !important;
+        }
+        @media (max-width: 991px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 56px;
+                height: calc(100vh - 56px);
+                z-index: 1000;
+                transition: left 0.3s;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-background">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">KYLE'S REIT</div>
+                <h2 class="h4 text-uppercase mb-2">Investment Dashboard</h2>
+                <p class="text-muted">Access your real estate portfolio analytics</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-trea w-100 mb-3">Login</button>
+                <button type="button" class="btn btn-trea-outline w-100" onclick="showDemoAccount()">Demo Access</button>
+            </form>
+            
+            <div id="demoAccount" class="alert alert-info mt-3" style="display: none;">
+                <h6 class="alert-heading">Demo Account:</h6>
+                <small>Username: kyle / Password: kyle123</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" style="display: none;">
+        <!-- Top Navigation -->
+        <nav class="navbar navbar-expand-lg main-navbar">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">KYLE'S REIT</a>
+                
+                <button class="navbar-toggler text-white" type="button" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <div class="ms-auto d-flex align-items-center">
+                    <span class="text-white me-3" id="userNameNav">Welcome</span>
+                    <button class="btn btn-sm text-white" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="d-flex">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-section">
+                    <h6 class="sidebar-title">Dashboard Controls</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Select Year</label>
+                        <select class="form-select" id="yearSelector" onchange="updateDashboard()">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2019">2019</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-trea w-100" onclick="refreshData()">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h6 class="sidebar-title">Quick Actions</h6>
+                    <button class="btn btn-trea-outline btn-sm w-100 mb-2" onclick="exportData()">
+                        <i class="fas fa-download"></i> Export Data
+                    </button>
+                    <button class="btn btn-trea-outline btn-sm w-100 mb-2" onclick="showImportModal()">
+                        <i class="fas fa-upload"></i> Import Financials
+                    </button>
+                    <button class="btn btn-trea-outline btn-sm w-100" onclick="testConnection()">
+                        <i class="fas fa-database"></i> Test DB Connection
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h6 class="sidebar-title">System Status</h6>
+                    <div class="text-muted">
+                        <small>
+                            <i class="fas fa-circle text-success"></i> Database: Connected<br>
+                            <i class="fas fa-circle text-success"></i> Last Update: <span id="lastUpdate">Just now</span>
+                        </small>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1 class="page-title">Real Estate Investment Dashboard</h1>
+                    <p class="page-subtitle">Portfolio Performance Analysis - <span id="selectedYear">2024</span></p>
+                </div>
+
+                <!-- Alert Section -->
+                <div id="alertSection"></div>
+
+                <!-- Tabs Navigation -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#overview">Performance Overview</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#portfolio">Portfolio Analysis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#trends">Financial Trends</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#properties">Property Details</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#dataManagement">Data Management</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#monthlyFinancials">Monthly Financials</a>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Performance Overview Tab -->
+                    <div class="tab-pane fade show active" id="overview">
+                        <!-- KPI Cards -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6 col-lg-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="portfolioValue">$0</div>
+                                    <div class="metric-label">Portfolio Value</div>
+                                    <div class="metric-change">On Track</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="ytdNOI">$0</div>
+                                    <div class="metric-label">YTD NOI</div>
+                                    <div class="metric-change" id="noiComparison">+0%</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="ytdRevenue">$0</div>
+                                    <div class="metric-label">YTD Revenue</div>
+                                    <div class="metric-change" id="revenueComparison">+0%</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="avgVacancy">0%</div>
+                                    <div class="metric-label">Avg Vacancy</div>
+                                    <div class="metric-change" id="vacancyStatus">Good</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Snapshot -->
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="financial-card">
+                                    <h4 class="financial-title">Current Period</h4>
+                                    <div class="mb-3">
+                                        <strong>Total Revenue:</strong> <span id="totalRevenue" class="float-end text-accent">$0</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Total Expenses:</strong> <span id="totalExpenses" class="float-end">$0</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Net Operating Income:</strong> <span id="totalNOI" class="float-end text-accent">$0</span>
+                                    </div>
+                                    <div>
+                                        <strong>Properties:</strong> <span id="propertyCount" class="float-end">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="financial-card">
+                                    <h4 class="financial-title">Year-over-Year Comparison</h4>
+                                    <div class="mb-3">
+                                        <strong>NOI Change:</strong> <span id="noiChange" class="float-end">+0%</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Revenue Change:</strong> <span id="revenueChange" class="float-end">+0%</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Avg Vacancy:</strong> <span id="avgVacancyComp" class="float-end">0%</span>
+                                    </div>
+                                    <div>
+                                        <strong>Performance:</strong> <span id="performanceStatus" class="float-end badge bg-success">Strong</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portfolio Analysis Tab -->
+                    <div class="tab-pane fade" id="portfolio">
+                        <div class="content-card">
+                            <h4 class="mb-4">Monthly Performance Trends</h4>
+                            <div class="chart-container">
+                                <canvas id="monthlyPerformanceChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="row g-4 mt-2">
+                            <div class="col-lg-6">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas id="noiCashFlowChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas id="expenseBreakdownChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Trends Tab -->
+                    <div class="tab-pane fade" id="trends">
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="chart-container">
+                                    <canvas id="vacancyTrendChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="chart-container">
+                                    <canvas id="noiMarginChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Details Tab -->
+                    <div class="tab-pane fade" id="properties">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="totalProperties">0</div>
+                                    <div class="metric-label">Total Properties</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="totalUnits">0</div>
+                                    <div class="metric-label">Total Units</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="portfolioRevenue">$0</div>
+                                    <div class="metric-label">Portfolio Revenue</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value" id="portfolioNOI">$0</div>
+                                    <div class="metric-label">Portfolio NOI</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="propertyCards" class="row g-4">
+                            <!-- Property cards will be dynamically inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Data Management Tab -->
+                    <div class="tab-pane fade" id="dataManagement">
+                        <div class="content-card">
+                            <h4 class="mb-4">Monthly Performance Data</h4>
+                            <div class="table-responsive">
+                                <table class="table data-table" id="monthlyDataTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Revenue</th>
+                                            <th>Expenses</th>
+                                            <th>NOI</th>
+                                            <th>Cash Flow</th>
+                                            <th>Vacancy</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be dynamically inserted -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-trea" onclick="exportMonthlyData()">
+                                    <i class="fas fa-download"></i> Export Monthly Data
+                                </button>
+                                <button class="btn btn-trea ms-2" onclick="exportKPISummary()">
+                                    <i class="fas fa-file-excel"></i> Export KPI Summary
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Financials Tab -->
+                    <div class="tab-pane fade" id="monthlyFinancials">
+                        <div class="content-card">
+                            <h4 class="mb-4">Monthly Financials Management</h4>
+                            
+                            <!-- Sub-tabs for Monthly Financials -->
+                            <ul class="nav nav-pills mb-4">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="pill" href="#manualEntry">Manual Entry</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="pill" href="#csvImport">CSV Import</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="pill" href="#financialHistory">Financial History</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="pill" href="#dataManagementSub">Data Management</a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <!-- Manual Entry -->
+                                <div class="tab-pane fade show active" id="manualEntry">
+                                    <form id="financialEntryForm">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Select Property</label>
+                                                <select class="form-select" id="propertySelect" required>
+                                                    <option value="">Choose property...</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Reporting Month</label>
+                                                <input type="month" class="form-control" id="reportingMonth" required>
+                                            </div>
+                                        </div>
+
+                                        <h5 class="mt-4 mb-3">💰 Income</h5>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Gross Rent ($)</label>
+                                                <input type="number" class="form-control" id="grossRent" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Vacancy Loss ($)</label>
+                                                <input type="number" class="form-control" id="vacancyLoss" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Other Income ($)</label>
+                                                <input type="number" class="form-control" id="otherIncome" step="0.01" min="0" required>
+                                            </div>
+                                        </div>
+
+                                        <h5 class="mt-4 mb-3">💸 Expenses</h5>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Repairs & Maintenance ($)</label>
+                                                <input type="number" class="form-control" id="repairsMaintenance" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Utilities ($)</label>
+                                                <input type="number" class="form-control" id="utilities" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Property Management ($)</label>
+                                                <input type="number" class="form-control" id="propertyManagement" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Property Taxes ($)</label>
+                                                <input type="number" class="form-control" id="propertyTaxes" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Insurance ($)</label>
+                                                <input type="number" class="form-control" id="insurance" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Debt Service ($)</label>
+                                                <input type="number" class="form-control" id="debtService" step="0.01" min="0" required>
+                                            </div>
+                                        </div>
+
+                                        <h5 class="mt-4 mb-3">📊 Calculated Metrics</h5>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <div class="alert alert-info">
+                                                    <strong>Total Income:</strong> $<span id="calcTotalIncome">0.00</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="alert alert-warning">
+                                                    <strong>Total Expenses:</strong> $<span id="calcTotalExpenses">0.00</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="alert alert-success">
+                                                    <strong>NOI:</strong> $<span id="calcNOI">0.00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-trea mt-4">
+                                            <i class="fas fa-save"></i> Save Financial Data
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- CSV Import -->
+                                <div class="tab-pane fade" id="csvImport">
+                                    <div class="alert alert-info">
+                                        <h5>CSV Template Format</h5>
+                                        <p>Your CSV should include: PropertyID, ReportingMonth, GrossRent, Vacancy, OtherIncome, etc.</p>
+                                        <button class="btn btn-sm btn-trea" onclick="downloadTemplate()">
+                                            <i class="fas fa-download"></i> Download Template
+                                        </button>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Upload CSV File</label>
+                                        <input type="file" class="form-control" id="csvFile" accept=".csv">
+                                    </div>
+                                    <button class="btn btn-trea" onclick="importCSV()">
+                                        <i class="fas fa-upload"></i> Import Financial Data
+                                    </button>
+                                    <div id="importPreview" class="mt-4"></div>
+                                </div>
+
+                                <!-- Financial History -->
+                                <div class="tab-pane fade" id="financialHistory">
+                                    <div class="mb-3">
+                                        <select class="form-select" id="historyPropertyFilter" onchange="loadFinancialHistory()">
+                                            <option value="">All Properties</option>
+                                        </select>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table data-table" id="financialHistoryTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Property</th>
+                                                    <th>Month</th>
+                                                    <th>Revenue</th>
+                                                    <th>Expenses</th>
+                                                    <th>NOI</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Data will be dynamically inserted -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Data Management Sub -->
+                                <div class="tab-pane fade" id="dataManagementSub">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Warning: Deleting records is permanent!
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table data-table" id="dataManagementTable">
+                                            <thead>
+                                                <tr>
+                                                    <th><input type="checkbox" id="selectAll"></th>
+                                                    <th>Property</th>
+                                                    <th>Month</th>
+                                                    <th>Total Income</th>
+                                                    <th>NOI</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Data will be dynamically inserted -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button class="btn btn-danger mt-3" onclick="deleteSelected()">
+                                        <i class="fas fa-trash"></i> Delete Selected Records
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global variables
+        let currentUser = null;
+        let selectedYear = new Date().getFullYear();
+        let dashboardData = {};
+        let properties = [];
+        let charts = {};
+
+        // Mock API endpoint (replace with actual backend API)
+        const API_BASE = '/api'; // You'll need to implement a backend API
+
+        // Database connection parameters (for backend implementation)
+        const dbConfig = {
+            server: "kyletristentran.database.windows.net",
+            database: "MultifamilyRealEstateDB",
+            username: "kyletristentran",
+            password: "Tran1105"
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current year in selector
+            document.getElementById('yearSelector').value = selectedYear;
+            
+            // Initialize form listeners
+            initializeFormListeners();
+        });
+
+        // Authentication
+        function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Simple authentication (replace with actual API call)
+            if (username === 'kyle' && password === 'kyle123') {
+                currentUser = { username: 'kyle', name: 'Kyle Tran' };
+                showDashboard();
+            } else {
+                alert('Invalid credentials. Please try again.');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+        }
+
+        function showDemoAccount() {
+            const demoDiv = document.getElementById('demoAccount');
+            demoDiv.style.display = demoDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function showDashboard() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('userNameNav').textContent = currentUser.name;
+            
+            // Load initial data
+            loadDashboardData();
+            loadProperties();
+        }
+
+        // Data Loading Functions
+        async function loadDashboardData() {
+            try {
+                // Show loading spinner
+                showLoading(true);
+                
+                // In a real implementation, these would be API calls
+                // For now, using mock data
+                dashboardData = {
+                    kpis: {
+                        portfolioValue: 25000000,
+                        totalRevenue: 1250000,
+                        totalExpenses: 750000,
+                        totalNOI: 500000,
+                        avgVacancy: 5.2,
+                        propertyCount: 8,
+                        noiVariance: 12.5,
+                        revenueVariance: 8.3
+                    },
+                    monthlyData: generateMockMonthlyData(),
+                    propertyData: generateMockPropertyData()
+                };
+                
+                // Update UI
+                updateKPIs(dashboardData.kpis);
+                updateCharts(dashboardData.monthlyData);
+                updatePropertyCards(dashboardData.propertyData);
+                updateDataTable(dashboardData.monthlyData);
+                
+                showLoading(false);
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showAlert('Error loading data. Please try again.', 'danger');
+                showLoading(false);
+            }
+        }
+
+        async function loadProperties() {
+            // Mock property data
+            properties = [
+                { id: 1, name: 'Sunset Plaza Apartments' },
+                { id: 2, name: 'Riverside Commons' },
+                { id: 3, name: 'Downtown Lofts' },
+                { id: 4, name: 'Parkview Residences' },
+                { id: 5, name: 'Marina Bay Towers' }
+            ];
+            
+            // Populate property selects
+            const propertySelect = document.getElementById('propertySelect');
+            const historyFilter = document.getElementById('historyPropertyFilter');
+            
+            propertySelect.innerHTML = '<option value="">Choose property...</option>';
+            properties.forEach(prop => {
+                propertySelect.innerHTML += `<option value="${prop.id}">${prop.name}</option>`;
+                historyFilter.innerHTML += `<option value="${prop.id}">${prop.name}</option>`;
+            });
+        }
+
+        // UI Update Functions
+        function updateKPIs(kpis) {
+            // Update KPI values
+            document.getElementById('portfolioValue').textContent = formatCurrency(kpis.portfolioValue);
+            document.getElementById('ytdNOI').textContent = formatCurrency(kpis.totalNOI);
+            document.getElementById('ytdRevenue').textContent = formatCurrency(kpis.totalRevenue);
+            document.getElementById('avgVacancy').textContent = kpis.avgVacancy.toFixed(1) + '%';
+            
+            // Update comparisons
+            document.getElementById('noiComparison').textContent = (kpis.noiVariance >= 0 ? '+' : '') + kpis.noiVariance.toFixed(1) + '%';
+            document.getElementById('noiComparison').className = kpis.noiVariance >= 0 ? 'metric-change text-success' : 'metric-change text-danger';
+            
+            document.getElementById('revenueComparison').textContent = (kpis.revenueVariance >= 0 ? '+' : '') + kpis.revenueVariance.toFixed(1) + '%';
+            document.getElementById('revenueComparison').className = kpis.revenueVariance >= 0 ? 'metric-change text-success' : 'metric-change text-danger';
+            
+            document.getElementById('vacancyStatus').textContent = kpis.avgVacancy <= 5 ? 'Good' : 'Above Target';
+            document.getElementById('vacancyStatus').className = kpis.avgVacancy <= 5 ? 'metric-change text-success' : 'metric-change text-warning';
+            
+            // Update financial snapshot
+            document.getElementById('totalRevenue').textContent = formatCurrency(kpis.totalRevenue);
+            document.getElementById('totalExpenses').textContent = formatCurrency(kpis.totalExpenses);
+            document.getElementById('totalNOI').textContent = formatCurrency(kpis.totalNOI);
+            document.getElementById('propertyCount').textContent = kpis.propertyCount;
+            
+            // Update year-over-year
+            document.getElementById('noiChange').textContent = (kpis.noiVariance >= 0 ? '+' : '') + kpis.noiVariance.toFixed(1) + '%';
+            document.getElementById('revenueChange').textContent = (kpis.revenueVariance >= 0 ? '+' : '') + kpis.revenueVariance.toFixed(1) + '%';
+            document.getElementById('avgVacancyComp').textContent = kpis.avgVacancy.toFixed(1) + '%';
+            
+            // Check for alerts
+            checkAlerts(kpis);
+        }
+
+        function updateCharts(monthlyData) {
+            // Monthly Performance Chart
+            const ctx1 = document.getElementById('monthlyPerformanceChart').getContext('2d');
+            if (charts.monthlyPerformance) charts.monthlyPerformance.destroy();
+            
+            charts.monthlyPerformance = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: monthlyData.map(d => d.month),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: monthlyData.map(d => d.revenue),
+                        borderColor: '#0C223A',
+                        backgroundColor: 'rgba(12, 34, 58, 0.1)',
+                        borderWidth: 3
+                    }, {
+                        label: 'Expenses',
+                        data: monthlyData.map(d => d.expenses),
+                        borderColor: '#87CEEB',
+                        backgroundColor: 'rgba(135, 206, 235, 0.1)',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Revenue vs Expenses'
+                        }
+                    }
+                }
+            });
+
+            // NOI & Cash Flow Chart
+            const ctx2 = document.getElementById('noiCashFlowChart').getContext('2d');
+            if (charts.noiCashFlow) charts.noiCashFlow.destroy();
+            
+            charts.noiCashFlow = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: monthlyData.map(d => d.month),
+                    datasets: [{
+                        label: 'NOI',
+                        data: monthlyData.map(d => d.noi),
+                        backgroundColor: '#0C223A'
+                    }, {
+                        label: 'Cash Flow',
+                        data: monthlyData.map(d => d.cashFlow),
+                        backgroundColor: '#87CEEB'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'NOI & Cash Flow'
+                        }
+                    }
+                }
+            });
+
+            // Vacancy Trend Chart
+            const ctx3 = document.getElementById('vacancyTrendChart').getContext('2d');
+            if (charts.vacancyTrend) charts.vacancyTrend.destroy();
+            
+            charts.vacancyTrend = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels: monthlyData.map(d => d.month),
+                    datasets: [{
+                        label: 'Vacancy Rate',
+                        data: monthlyData.map(d => d.vacancy),
+                        borderColor: '#0C223A',
+                        borderWidth: 3,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Vacancy Rate Trend'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 20,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Expense Breakdown Chart (if needed)
+            const expenseCtx = document.getElementById('expenseBreakdownChart');
+            if (expenseCtx) {
+                const ctx5 = expenseCtx.getContext('2d');
+                if (charts.expenseBreakdown) charts.expenseBreakdown.destroy();
+                
+                charts.expenseBreakdown = new Chart(ctx5, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Repairs', 'Utilities', 'Management', 'Taxes', 'Insurance'],
+                        datasets: [{
+                            data: [25, 15, 20, 25, 15],
+                            backgroundColor: [
+                                '#0C223A',
+                                '#87CEEB',
+                                '#4682B4',
+                                '#5F9EA0',
+                                '#B0E0E6'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Expense Breakdown'
+                            }
+                        }
+                    }
+                });
+            }
+            const ctx4 = document.getElementById('noiMarginChart').getContext('2d');
+            if (charts.noiMargin) charts.noiMargin.destroy();
+            
+            charts.noiMargin = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels: monthlyData.map(d => d.month),
+                    datasets: [{
+                        label: 'NOI Margin %',
+                        data: monthlyData.map(d => (d.noi / d.revenue * 100)),
+                        backgroundColor: '#87CEEB'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'NOI Margin %'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Expense Breakdown Chart (if needed)
+            const expenseCtx = document.getElementById('expenseBreakdownChart');
+            if (expenseCtx) {
+                const ctx5 = expenseCtx.getContext('2d');
+                if (charts.expenseBreakdown) charts.expenseBreakdown.destroy();
+                
+                charts.expenseBreakdown = new Chart(ctx5, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Repairs', 'Utilities', 'Management', 'Taxes', 'Insurance'],
+                        datasets: [{
+                            data: [25, 15, 20, 25, 15],
+                            backgroundColor: [
+                                '#0C223A',
+                                '#87CEEB',
+                                '#4682B4',
+                                '#5F9EA0',
+                                '#B0E0E6'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Expense Breakdown'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updatePropertyCards(propertyData) {
+            const container = document.getElementById('propertyCards');
+            container.innerHTML = '';
+            
+            // Update summary metrics
+            document.getElementById('totalProperties').textContent = propertyData.length;
+            document.getElementById('totalUnits').textContent = propertyData.reduce((sum, p) => sum + p.units, 0).toLocaleString();
+            document.getElementById('portfolioRevenue').textContent = formatCurrency(propertyData.reduce((sum, p) => sum + p.revenue, 0));
+            document.getElementById('portfolioNOI').textContent = formatCurrency(propertyData.reduce((sum, p) => sum + p.noi, 0));
+            
+            // Create property cards
+            propertyData.forEach(property => {
+                const noiMargin = property.revenue > 0 ? (property.noi / property.revenue * 100).toFixed(1) : 0;
+                
+                const card = `
+                    <div class="col-lg-6">
+                        <div class="property-card">
+                            <h4 class="property-name">${property.name}</h4>
+                            <p class="mb-2">💰 <strong>Purchase Price:</strong> ${formatCurrency(property.purchasePrice)}</p>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <strong>${property.units}</strong><br>
+                                        <small>Units</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <strong>${property.vacancy.toFixed(1)}%</strong><br>
+                                        <small>Vacancy</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <strong>${property.monthsActive}</strong><br>
+                                        <small>Months Active</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="border-top pt-3">
+                                <div class="row g-3">
+                                    <div class="col-4">
+                                        <strong>Revenue</strong><br>
+                                        ${formatCurrency(property.revenue)}
+                                    </div>
+                                    <div class="col-4">
+                                        <strong>Expenses</strong><br>
+                                        ${formatCurrency(property.expenses)}
+                                    </div>
+                                    <div class="col-4">
+                                        <strong>NOI</strong><br>
+                                        <span class="${property.noi >= 0 ? 'text-success' : 'text-danger'}">
+                                            ${formatCurrency(property.noi)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>NOI Margin:</strong> ${noiMargin}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        function updateDataTable(monthlyData) {
+            const tbody = document.querySelector('#monthlyDataTable tbody');
+            tbody.innerHTML = '';
+            
+            monthlyData.forEach(data => {
+                const row = `
+                    <tr>
+                        <td>${data.month}</td>
+                        <td>${formatCurrency(data.revenue)}</td>
+                        <td>${formatCurrency(data.expenses)}</td>
+                        <td>${formatCurrency(data.noi)}</td>
+                        <td>${formatCurrency(data.cashFlow)}</td>
+                        <td>${data.vacancy.toFixed(1)}%</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // Form Functions
+        function initializeFormListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', login);
+            
+            // Financial entry form
+            document.getElementById('financialEntryForm').addEventListener('submit', saveFinancialData);
+            
+            // Auto-calculate totals
+            const incomeInputs = ['grossRent', 'vacancyLoss', 'otherIncome'];
+            const expenseInputs = ['repairsMaintenance', 'utilities', 'propertyManagement', 'propertyTaxes', 'insurance'];
+            
+            [...incomeInputs, ...expenseInputs, 'debtService'].forEach(id => {
+                document.getElementById(id).addEventListener('input', calculateTotals);
+            });
+            
+            // Select all checkbox
+            document.getElementById('selectAll').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#dataManagementTable tbody input[type="checkbox"]');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        function calculateTotals() {
+            const grossRent = parseFloat(document.getElementById('grossRent').value) || 0;
+            const vacancyLoss = parseFloat(document.getElementById('vacancyLoss').value) || 0;
+            const otherIncome = parseFloat(document.getElementById('otherIncome').value) || 0;
+            
+            const repairsMaintenance = parseFloat(document.getElementById('repairsMaintenance').value) || 0;
+            const utilities = parseFloat(document.getElementById('utilities').value) || 0;
+            const propertyManagement = parseFloat(document.getElementById('propertyManagement').value) || 0;
+            const propertyTaxes = parseFloat(document.getElementById('propertyTaxes').value) || 0;
+            const insurance = parseFloat(document.getElementById('insurance').value) || 0;
+            const debtService = parseFloat(document.getElementById('debtService').value) || 0;
+            
+            const totalIncome = grossRent - vacancyLoss + otherIncome;
+            const totalExpenses = repairsMaintenance + utilities + propertyManagement + propertyTaxes + insurance;
+            const noi = totalIncome - totalExpenses;
+            const cashFlow = noi - debtService;
+            
+            document.getElementById('calcTotalIncome').textContent = totalIncome.toFixed(2);
+            document.getElementById('calcTotalExpenses').textContent = totalExpenses.toFixed(2);
+            document.getElementById('calcNOI').textContent = noi.toFixed(2);
+        }
+
+        async function saveFinancialData(event) {
+            event.preventDefault();
+            
+            // In a real implementation, this would send data to the backend API
+            alert('Financial data saved successfully!');
+            document.getElementById('financialEntryForm').reset();
+            calculateTotals();
+            
+            // Reload data
+            loadDashboardData();
+        }
+
+        // Utility Functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertSection = document.getElementById('alertSection');
+            const alert = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            alertSection.innerHTML = alert;
+        }
+
+        function checkAlerts(kpis) {
+            const alerts = [];
+            
+            if (kpis.noiVariance < -10) {
+                alerts.push(`NOI decreased by ${Math.abs(kpis.noiVariance).toFixed(1)}% compared to last year`);
+            }
+            
+            if (kpis.avgVacancy > 10) {
+                alerts.push(`Average vacancy (${kpis.avgVacancy.toFixed(1)}%) is above 10% target`);
+            }
+            
+            if (kpis.revenueVariance < -5) {
+                alerts.push(`Revenue decreased by ${Math.abs(kpis.revenueVariance).toFixed(1)}% compared to last year`);
+            }
+            
+            if (alerts.length > 0) {
+                const alertHTML = `
+                    <div class="alert-section">
+                        <div class="alert-header">⚠️ Critical Alerts</div>
+                        ${alerts.map(alert => `<div class="alert-item">• ${alert}</div>`).join('')}
+                    </div>
+                `;
+                document.getElementById('alertSection').innerHTML = alertHTML;
+            }
+        }
+
+        function showLoading(show) {
+            // Implement loading spinner
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        function updateDashboard() {
+            selectedYear = document.getElementById('yearSelector').value;
+            document.getElementById('selectedYear').textContent = selectedYear;
+            loadDashboardData();
+        }
+
+        function refreshData() {
+            loadDashboardData();
+        }
+
+        function exportData() {
+            // Implement data export
+            alert('Export functionality would download data as CSV/Excel');
+        }
+
+        function showImportModal() {
+            // Implement import modal
+            alert('Import modal would open for file upload');
+        }
+
+        function testConnection() {
+            // Implement database connection test
+            alert('Database connection test would run here');
+        }
+
+        function exportMonthlyData() {
+            // Implement monthly data export
+            alert('Monthly data would be exported as CSV');
+        }
+
+        function exportKPISummary() {
+            // Implement KPI summary export
+            alert('KPI summary would be exported as Excel');
+        }
+
+        function downloadTemplate() {
+            // Implement template download
+            alert('CSV template would be downloaded');
+        }
+
+        function importCSV() {
+            // Implement CSV import
+            const fileInput = document.getElementById('csvFile');
+            if (fileInput.files.length > 0) {
+                alert('CSV file would be processed and imported');
+            } else {
+                alert('Please select a CSV file first');
+            }
+        }
+
+        function loadFinancialHistory() {
+            // Implement financial history loading
+            alert('Financial history would be loaded');
+        }
+
+        function deleteSelected() {
+            // Implement delete selected records
+            if (confirm('Are you sure you want to delete the selected records?')) {
+                alert('Selected records would be deleted');
+            }
+        }
+
+        // Mock Data Generators
+        function generateMockMonthlyData() {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return months.map((month, index) => ({
+                month: month,
+                revenue: 100000 + Math.random() * 20000,
+                expenses: 60000 + Math.random() * 10000,
+                noi: 40000 + Math.random() * 10000,
+                cashFlow: 20000 + Math.random() * 5000,
+                vacancy: 3 + Math.random() * 7
+            }));
+        }
+
+        function generateMockPropertyData() {
+            return [
+                {
+                    name: 'Sunset Plaza Apartments',
+                    purchasePrice: 5000000,
+                    units: 50,
+                    revenue: 250000,
+                    expenses: 150000,
+                    noi: 100000,
+                    vacancy: 5.2,
+                    monthsActive: 12
+                },
+                {
+                    name: 'Riverside Commons',
+                    purchasePrice: 7500000,
+                    units: 75,
+                    revenue: 375000,
+                    expenses: 225000,
+                    noi: 150000,
+                    vacancy: 4.1,
+                    monthsActive: 12
+                },
+                {
+                    name: 'Downtown Lofts',
+                    purchasePrice: 3500000,
+                    units: 30,
+                    revenue: 180000,
+                    expenses: 110000,
+                    noi: 70000,
+                    vacancy: 6.5,
+                    monthsActive: 10
+                },
+                {
+                    name: 'Parkview Residences',
+                    purchasePrice: 6000000,
+                    units: 60,
+                    revenue: 300000,
+                    expenses: 180000,
+                    noi: 120000,
+                    vacancy: 3.8,
+                    monthsActive: 12
+                }
+            ];
+        }
+    </script>
+</body>
+</html>
