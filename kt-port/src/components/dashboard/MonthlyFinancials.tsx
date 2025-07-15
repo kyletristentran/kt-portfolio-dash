@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Property {
   PropertyID: number;
@@ -58,7 +58,7 @@ export default function MonthlyFinancials() {
       if (!response.ok) throw new Error('Failed to fetch properties');
       const data = await response.json();
       setProperties(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load properties');
     }
   };
@@ -469,10 +469,10 @@ interface CSVImportTabProps {
   onImportError: (error: string) => void;
 }
 
-function CSVImportTab({ properties, onImportSuccess, onImportError }: CSVImportTabProps) {
+function CSVImportTab({ onImportSuccess, onImportError }: CSVImportTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
-  const [preview, setPreview] = useState<any[]>([]);
+  const [preview, setPreview] = useState<Record<string, string>[]>([]);
 
   const downloadTemplate = () => {
     const headers = [
@@ -510,7 +510,7 @@ function CSVImportTab({ properties, onImportSuccess, onImportError }: CSVImportT
       const lines = text.split('\n').filter(line => line.trim());
       const headers = lines[0].split(',').map(h => h.trim());
       const rows = lines.slice(1, 4).map(line => 
-        line.split(',').reduce((obj: any, val, index) => {
+        line.split(',').reduce((obj: Record<string, string>, val, index) => {
           obj[headers[index]] = val.trim();
           return obj;
         }, {})
@@ -533,7 +533,7 @@ function CSVImportTab({ properties, onImportSuccess, onImportError }: CSVImportT
         
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim());
-          const row: any = {};
+          const row: Record<string, string> = {};
           headers.forEach((header, index) => {
             row[header] = values[index];
           });
@@ -648,7 +648,7 @@ function CSVImportTab({ properties, onImportSuccess, onImportError }: CSVImportT
               <tbody>
                 {preview.map((row, index) => (
                   <tr key={index}>
-                    {Object.values(row).map((value: any, i) => (
+                    {Object.values(row).map((value: string, i) => (
                       <td key={i}>{value}</td>
                     ))}
                   </tr>
@@ -685,16 +685,21 @@ interface FinancialHistoryTabProps {
 }
 
 function FinancialHistoryTab({ properties }: FinancialHistoryTabProps) {
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<{
+    FinancialID: number;
+    PropertyName: string;
+    ReportingMonth: string;
+    TotalIncome: number;
+    TotalExpenses: number;
+    NOI: number;
+    CashFlow: number;
+    Vacancy: number;
+  }[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<number | ''>('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  useEffect(() => {
-    fetchHistory();
-  }, [selectedProperty, selectedYear]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -713,7 +718,11 @@ function FinancialHistoryTab({ properties }: FinancialHistoryTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProperty, selectedYear]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

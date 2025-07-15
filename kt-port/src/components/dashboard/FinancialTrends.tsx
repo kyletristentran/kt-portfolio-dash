@@ -122,26 +122,6 @@ export default function FinancialTrends() {
       legend: {
         position: 'top' as const,
       },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 20,
-        ticks: {
-          callback: function(value: any) {
-            return value + '%';
-          },
-        },
-      },
-    },
-    elements: {
-      point: {
-        radius: 6,
-        hoverRadius: 8,
-      },
-    },
-    // Add target line at 5%
-    plugins: {
       annotation: {
         annotations: {
           targetLine: {
@@ -158,6 +138,23 @@ export default function FinancialTrends() {
             },
           },
         },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 20,
+        ticks: {
+          callback: function(value: unknown) {
+            return value + '%';
+          },
+        },
+      },
+    },
+    elements: {
+      point: {
+        radius: 6,
+        hoverRadius: 8,
       },
     },
   };
@@ -182,7 +179,7 @@ export default function FinancialTrends() {
         beginAtZero: true,
         max: 100,
         ticks: {
-          callback: function(value: any) {
+          callback: function(value: unknown) {
             return value + '%';
           },
         },

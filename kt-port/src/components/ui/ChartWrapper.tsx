@@ -30,8 +30,15 @@ ChartJS.register(
 
 interface ChartWrapperProps {
   type: 'line' | 'bar' | 'doughnut';
-  data: any;
-  options?: any;
+  data: {
+    labels: string[];
+    datasets: Array<{
+      label?: string;
+      data: number[];
+      [key: string]: unknown;
+    }>;
+  };
+  options?: Record<string, unknown>;
   height?: number;
 }
 
@@ -39,10 +46,11 @@ export default function ChartWrapper({ type, data, options, height = 400 }: Char
   const chartRef = useRef<ChartJS>(null);
 
   useEffect(() => {
+    const currentChartRef = chartRef.current;
     // Cleanup function to destroy chart on unmount
     return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
+      if (currentChartRef) {
+        currentChartRef.destroy();
       }
     };
   }, []);
@@ -69,7 +77,7 @@ export default function ChartWrapper({ type, data, options, height = 400 }: Char
         ref={chartRef}
         type={type}
         data={data}
-        options={defaultOptions}
+        options={defaultOptions as Record<string, unknown>}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Property {
   PropertyID: number;
@@ -40,27 +40,7 @@ export default function DataManagement() {
   const [selectedProperty, setSelectedProperty] = useState<number | ''>('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchProperties();
-    fetchRecords();
-  }, []);
-
-  useEffect(() => {
-    fetchRecords();
-  }, [selectedYear, selectedProperty]);
-
-  const fetchProperties = async () => {
-    try {
-      const response = await fetch('/api/properties');
-      if (!response.ok) throw new Error('Failed to fetch properties');
-      const data = await response.json();
-      setProperties(data);
-    } catch (err) {
-      console.error('Error fetching properties:', err);
-    }
-  };
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -81,7 +61,28 @@ export default function DataManagement() {
     } finally {
       setLoading(false);
     }
+  }, [selectedYear, selectedProperty]);
+
+  useEffect(() => {
+    fetchProperties();
+    fetchRecords();
+  }, [fetchRecords]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [selectedYear, selectedProperty, fetchRecords]);
+
+  const fetchProperties = async () => {
+    try {
+      const response = await fetch('/api/properties');
+      if (!response.ok) throw new Error('Failed to fetch properties');
+      const data = await response.json();
+      setProperties(data);
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+    }
   };
+
 
   const handleDelete = async (financialId: number) => {
     if (!confirm('Are you sure you want to delete this financial record? This action cannot be undone.')) {
