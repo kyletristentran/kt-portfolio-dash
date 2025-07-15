@@ -146,8 +146,8 @@ export default function PortfolioAnalysis() {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: function(value: any) {
-            return '$' + value.toLocaleString();
+          callback: function(value: unknown) {
+            return '$' + (value as number).toLocaleString();
           },
         },
       },

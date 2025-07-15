@@ -21,7 +21,7 @@ export default function LoginPage() {
       if (!success) {
         setError('Invalid credentials. Please try again.');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred during login.');
     } finally {
       setIsLoading(false);
@@ -36,7 +36,7 @@ export default function LoginPage() {
     <div className="login-background">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">KYLE'S REIT</div>
+          <div className="login-logo">KYLE&apos;S REIT</div>
           <h2 className="h4 text-uppercase mb-2">Investment Dashboard</h2>
           <p className="text-muted">Access your real estate portfolio analytics</p>
         </div>
@@ -104,7 +104,7 @@ export default function LoginPage() {
               <strong>Password:</strong> tran
             </div>
             <small className="text-muted">
-              💡 <em>Hint: The password is the creator's last name</em>
+              💡 <em>Hint: The password is the creator&apos;s last name</em>
             </small>
           </div>
         )}

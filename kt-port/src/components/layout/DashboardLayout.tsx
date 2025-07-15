@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  currentUser: any;
+  currentUser: { name?: string } | null;
   onLogout: () => void;
 }
 
@@ -56,7 +56,7 @@ export default function DashboardLayout({ children, currentUser, onLogout }: Das
       } else {
         alert(`❌ Database connection failed: ${result.message}`);
       }
-    } catch (error) {
+    } catch {
       alert('❌ Error testing connection');
     }
   };
@@ -75,7 +75,7 @@ export default function DashboardLayout({ children, currentUser, onLogout }: Das
         <div className="container-fluid d-flex align-items-center justify-content-between px-4">
           <div className="d-flex align-items-center">
             <a className="navbar-brand text-white text-decoration-none fw-bold text-uppercase ls-2">
-              KYLE'S REIT
+              KYLE&apos;S REIT
             </a>
           </div>
           

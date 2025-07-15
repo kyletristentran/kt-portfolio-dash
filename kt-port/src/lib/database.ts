@@ -416,7 +416,7 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
     const pool = await getConnection();
     
     let whereClause = '';
-    const inputs: { name: string; type: any; value: any }[] = [];
+    const inputs: { name: string; type: sql.ISqlTypeFactoryWithNoParams; value: unknown }[] = [];
     
     if (year) {
       whereClause += ' WHERE YEAR(mf.ReportingMonth) = @year';
