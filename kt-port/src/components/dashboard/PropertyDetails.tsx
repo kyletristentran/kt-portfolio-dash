@@ -5,12 +5,16 @@ import { useState, useEffect } from 'react';
 interface PropertyDetail {
   PropertyID: number;
   PropertyName: string;
+  Address: string;
+  City: string;
+  State: string;
   PurchasePrice: number;
   TotalUnits: number;
   TotalRevenue: number;
   TotalExpenses: number;
   TotalNOI: number;
   AvgVacancy: number;
+  OccupancyRate: number;
   MonthsReported: number;
 }
 
@@ -26,7 +30,7 @@ export default function PropertyDetails() {
   const fetchPropertyDetails = async () => {
     try {
       setLoading(true);
-      const year = new Date().getFullYear();
+      const year = 2024; // Changed from current year to 2024 where data exists
       const response = await fetch(`/api/dashboard/property-details?year=${year}`);
       
       if (!response.ok) {
@@ -80,10 +84,9 @@ export default function PropertyDetails() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center py-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
+      <div className="loading">
+        <div className="spinner"></div>
+        <div>Loading properties...</div>
       </div>
     );
   }
@@ -93,7 +96,7 @@ export default function PropertyDetails() {
       <div className="alert alert-danger" role="alert">
         <h4 className="alert-heading">Error Loading Properties</h4>
         <p>{error}</p>
-        <button className="btn btn-outline-danger" onClick={fetchPropertyDetails}>
+        <button className="btn-primary" onClick={fetchPropertyDetails}>
           Try Again
         </button>
       </div>
@@ -103,11 +106,10 @@ export default function PropertyDetails() {
   const totalUnits = properties.reduce((sum, p) => sum + p.TotalUnits, 0);
   const totalRevenue = properties.reduce((sum, p) => sum + p.TotalRevenue, 0);
   const totalNOI = properties.reduce((sum, p) => sum + p.TotalNOI, 0);
+  const totalValue = properties.reduce((sum, p) => sum + p.PurchasePrice, 0);
 
   return (
-    <div className="content-card">
-      <h4 className="mb-4">🏢 Property Portfolio Details</h4>
-      
+    <>
       {properties.length === 0 ? (
         <div className="alert alert-info" role="alert">
           <h5 className="alert-heading">No Properties Found</h5>
@@ -116,166 +118,118 @@ export default function PropertyDetails() {
       ) : (
         <>
           {/* Summary metrics */}
-          <div className="row g-3 mb-4">
-            <div className="col-md-3">
-              <div className="metric-card">
-                <div className="metric-value">{properties.length}</div>
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <div className="metric-header">
                 <div className="metric-label">Total Properties</div>
+                <div className="metric-icon"><i className="fas fa-building"></i></div>
               </div>
+              <div className="metric-value">{properties.length}</div>
+              <div className="metric-subtitle">Active properties in portfolio</div>
             </div>
-            <div className="col-md-3">
-              <div className="metric-card">
-                <div className="metric-value">{totalUnits.toLocaleString()}</div>
+            <div className="metric-card">
+              <div className="metric-header">
                 <div className="metric-label">Total Units</div>
+                <div className="metric-icon"><i className="fas fa-home"></i></div>
               </div>
+              <div className="metric-value">{totalUnits.toLocaleString()}</div>
+              <div className="metric-subtitle">Total rental units</div>
             </div>
-            <div className="col-md-3">
-              <div className="metric-card">
-                <div className="metric-value">{formatCurrency(totalRevenue)}</div>
-                <div className="metric-label">Portfolio Revenue</div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <div className="metric-label">Portfolio Value</div>
+                <div className="metric-icon"><i className="fas fa-dollar-sign"></i></div>
               </div>
+              <div className="metric-value">{formatCurrency(totalValue)}</div>
+              <div className="metric-subtitle">Total purchase price</div>
             </div>
-            <div className="col-md-3">
-              <div className="metric-card">
-                <div className="metric-value">{formatCurrency(totalNOI)}</div>
+            <div className="metric-card">
+              <div className="metric-header">
                 <div className="metric-label">Portfolio NOI</div>
+                <div className="metric-icon"><i className="fas fa-chart-line"></i></div>
               </div>
+              <div className="metric-value">{formatCurrency(totalNOI)}</div>
+              <div className="metric-subtitle">Net operating income</div>
             </div>
           </div>
 
-          {/* Export Button */}
-          <div className="mb-3">
-            <button className="btn btn-trea" onClick={downloadCSV}>
-              <i className="fas fa-download"></i> Export Property Details
-            </button>
-          </div>
-
-          {/* Property Cards */}
-          <div className="row g-4">
-            {properties.map((property) => {
-              const noiMargin = property.TotalRevenue > 0 
-                ? (property.TotalNOI / property.TotalRevenue * 100) 
-                : 0;
-
-              return (
-                <div key={property.PropertyID} className="col-lg-6">
-                  <div className="content-card property-card">
-                    <h5 className="property-name">{property.PropertyName}</h5>
-                    <p className="mb-2">💰 <strong>Purchase Price:</strong> {formatCurrency(property.PurchasePrice)}</p>
-                    
-                    <div className="row g-3 mb-3">
-                      <div className="col-4">
-                        <div className="text-center">
-                          <strong>{property.TotalUnits}</strong><br/>
-                          <small>Units</small>
-                        </div>
-                      </div>
-                      <div className="col-4">
-                        <div className="text-center">
-                          <strong>{property.AvgVacancy.toFixed(1)}%</strong><br/>
-                          <small>Vacancy</small>
-                        </div>
-                      </div>
-                      <div className="col-4">
-                        <div className="text-center">
-                          <strong>{property.MonthsReported}</strong><br/>
-                          <small>Months Active</small>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-top pt-3">
-                      <div className="row g-3">
-                        <div className="col-4">
-                          <strong>Revenue</strong><br/>
-                          {formatCurrency(property.TotalRevenue)}
-                        </div>
-                        <div className="col-4">
-                          <strong>Expenses</strong><br/>
-                          {formatCurrency(property.TotalExpenses)}
-                        </div>
-                        <div className="col-4">
-                          <strong>NOI</strong><br/>
-                          <span className={property.TotalNOI >= 0 ? 'text-success' : 'text-danger'}>
-                            {formatCurrency(property.TotalNOI)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <strong>NOI Margin:</strong> 
-                        <span className={`ms-2 ${noiMargin >= 30 ? 'text-success' : noiMargin >= 15 ? 'text-warning' : 'text-danger'}`}>
-                          {noiMargin.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Performance Summary Table */}
-          <div className="mt-4">
-            <h5 className="section-title">Performance Summary</h5>
-            <div className="table-responsive">
-              <table className="table table-striped table-hover">
-                <thead className="table-dark">
-                  <tr>
-                    <th>Property</th>
-                    <th>Units</th>
-                    <th>Revenue</th>
-                    <th>NOI</th>
-                    <th>NOI Margin</th>
-                    <th>Vacancy</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {properties.map((property) => {
-                    const noiMargin = property.TotalRevenue > 0 
-                      ? (property.TotalNOI / property.TotalRevenue * 100) 
-                      : 0;
-                    
-                    let performanceStatus = 'Poor';
-                    let statusClass = 'badge bg-danger';
-                    
-                    if (noiMargin >= 30 && property.AvgVacancy <= 5) {
-                      performanceStatus = 'Excellent';
-                      statusClass = 'badge bg-success';
-                    } else if (noiMargin >= 20 && property.AvgVacancy <= 10) {
-                      performanceStatus = 'Good';
-                      statusClass = 'badge bg-primary';
-                    } else if (noiMargin >= 10) {
-                      performanceStatus = 'Fair';
-                      statusClass = 'badge bg-warning';
-                    }
-
-                    return (
-                      <tr key={property.PropertyID}>
-                        <td><strong>{property.PropertyName}</strong></td>
-                        <td>{property.TotalUnits}</td>
-                        <td>{formatCurrency(property.TotalRevenue)}</td>
-                        <td className={property.TotalNOI >= 0 ? 'text-success' : 'text-danger'}>
-                          {formatCurrency(property.TotalNOI)}
-                        </td>
-                        <td>{noiMargin.toFixed(1)}%</td>
-                        <td>
-                          <span className={property.AvgVacancy <= 5 ? 'text-success' : property.AvgVacancy <= 10 ? 'text-warning' : 'text-danger'}>
-                            {property.AvgVacancy.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td>
-                          <span className={statusClass}>{performanceStatus}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* Property Details Table */}
+          <div className="table-container">
+            <div className="chart-header">
+              <div>
+                <h3 className="chart-title">Property Portfolio Details</h3>
+                <p className="chart-subtitle">Comprehensive property information with location and performance metrics</p>
+              </div>
+              <button className="btn-secondary" onClick={downloadCSV}>
+                <i className="fas fa-download"></i> Export
+              </button>
             </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Property Name</th>
+                  <th>Location</th>
+                  <th>Units</th>
+                  <th>Purchase Price</th>
+                  <th>Occupancy Rate</th>
+                  <th>YTD Revenue</th>
+                  <th>YTD NOI</th>
+                  <th>NOI Margin</th>
+                  <th>Performance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {properties.map((property) => {
+                  const noiMargin = property.TotalRevenue > 0
+                    ? (property.TotalNOI / property.TotalRevenue * 100)
+                    : 0;
+
+                  let performanceStatus = 'Poor';
+                  let statusClass = 'status-badge poor';
+
+                  if (noiMargin >= 30 && property.OccupancyRate >= 95) {
+                    performanceStatus = 'Excellent';
+                    statusClass = 'status-badge excellent';
+                  } else if (noiMargin >= 20 && property.OccupancyRate >= 90) {
+                    performanceStatus = 'Good';
+                    statusClass = 'status-badge good';
+                  } else if (noiMargin >= 10) {
+                    performanceStatus = 'Fair';
+                    statusClass = 'status-badge warning';
+                  }
+
+                  return (
+                    <tr key={property.PropertyID}>
+                      <td className="property-name">{property.PropertyName}</td>
+                      <td>
+                        <i className="fas fa-map-marker-alt" style={{ color: 'var(--accent-gold)', marginRight: '8px' }}></i>
+                        {property.City}, {property.State}
+                        <br/>
+                        <small style={{ color: 'var(--text-light)' }}>{property.Address}</small>
+                      </td>
+                      <td>{property.TotalUnits}</td>
+                      <td>{formatCurrency(property.PurchasePrice)}</td>
+                      <td>
+                        <strong style={{ color: property.OccupancyRate >= 95 ? 'var(--success)' : property.OccupancyRate >= 90 ? 'var(--warning)' : 'var(--danger)' }}>
+                          {property.OccupancyRate.toFixed(1)}%
+                        </strong>
+                      </td>
+                      <td>{formatCurrency(property.TotalRevenue)}</td>
+                      <td style={{ color: property.TotalNOI >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                        <strong>{formatCurrency(property.TotalNOI)}</strong>
+                      </td>
+                      <td>{noiMargin.toFixed(1)}%</td>
+                      <td>
+                        <span className={statusClass}>{performanceStatus}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }

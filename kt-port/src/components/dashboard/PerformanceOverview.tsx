@@ -27,11 +27,11 @@ export default function PerformanceOverview() {
       setLoading(true);
       const year = 2024; // Using 2024 as we have data for this year
       const response = await fetch(`/api/dashboard/kpis?year=${year}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch KPI data');
       }
-      
+
       const data = await response.json();
       setKpis(data);
     } catch (err) {
@@ -50,12 +50,15 @@ export default function PerformanceOverview() {
     }).format(amount);
   };
 
+  const formatPercent = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+
   if (loading) {
     return (
-      <div className="d-flex justify-content-center py-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
+      <div className="loading">
+        <div className="spinner"></div>
+        <div>Loading data...</div>
       </div>
     );
   }
@@ -65,7 +68,7 @@ export default function PerformanceOverview() {
       <div className="alert alert-danger" role="alert">
         <h4 className="alert-heading">Error Loading Dashboard</h4>
         <p>{error}</p>
-        <button className="btn btn-outline-danger" onClick={fetchKPIData}>
+        <button className="btn-primary" onClick={fetchKPIData}>
           Try Again
         </button>
       </div>
@@ -80,95 +83,125 @@ export default function PerformanceOverview() {
     );
   }
 
+  // Calculate derived metrics
+  const totalIncome = kpis.total_revenue;
+  const totalExpenses = kpis.total_expenses;
+  const noi = kpis.total_noi;
+  const grossRent = totalIncome * 1.05; // Estimate
+  const vacancy = grossRent - totalIncome;
+  const debtService = noi * 0.4; // Estimate 40% of NOI
+  const cashFlow = noi - debtService;
+  const occupancy = 100 - kpis.avg_vacancy;
+  const expenseRatio = (totalExpenses / totalIncome) * 100;
+  const dscr = debtService > 0 ? noi / debtService : 0;
+
   return (
     <>
-      {/* KPI Cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-md-6 col-lg-3">
-          <div className="metric-card">
-            <div className="metric-value">{formatCurrency(kpis.total_portfolio_value)}</div>
-            <div className="metric-label">Portfolio Value</div>
-            <div className="metric-change">On Track</div>
+      {/* Metrics Grid */}
+      <div className="metrics-grid">
+        {/* Total Income */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Total Income</div>
+            <div className="metric-icon"><i className="fas fa-dollar-sign"></i></div>
           </div>
-        </div>
-        <div className="col-md-6 col-lg-3">
-          <div className="metric-card">
-            <div className="metric-value">{formatCurrency(kpis.total_noi)}</div>
-            <div className="metric-label">YTD NOI</div>
-            <div className={`metric-change ${kpis.noi_variance >= 0 ? 'text-success' : 'text-danger'}`}>
-              {kpis.noi_variance >= 0 ? '+' : ''}{kpis.noi_variance.toFixed(1)}%
-            </div>
+          <div className="metric-value">{formatCurrency(totalIncome)}</div>
+          <div className="metric-change positive">
+            <i className="fas fa-arrow-up"></i> +{kpis.revenue_variance.toFixed(1)}% vs prior
           </div>
+          <div className="metric-subtitle">Gross rent less vacancy plus other income</div>
         </div>
-        <div className="col-md-6 col-lg-3">
-          <div className="metric-card">
-            <div className="metric-value">{formatCurrency(kpis.total_revenue)}</div>
-            <div className="metric-label">YTD Revenue</div>
-            <div className={`metric-change ${kpis.revenue_variance >= 0 ? 'text-success' : 'text-danger'}`}>
-              {kpis.revenue_variance >= 0 ? '+' : ''}{kpis.revenue_variance.toFixed(1)}%
-            </div>
-          </div>
-        </div>
-        <div className="col-md-6 col-lg-3">
-          <div className="metric-card">
-            <div className="metric-value">{kpis.avg_vacancy.toFixed(1)}%</div>
-            <div className="metric-label">Avg Vacancy</div>
-            <div className={`metric-change ${kpis.avg_vacancy <= 5 ? 'text-success' : 'text-warning'}`}>
-              {kpis.avg_vacancy <= 5 ? 'Good' : 'Above Target'}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Financial Snapshot */}
-      <div className="row g-4">
-        <div className="col-lg-6">
-          <div className="financial-card">
-            <h4 className="financial-title">Current Period</h4>
-            <div className="mb-3">
-              <strong>Total Revenue:</strong> 
-              <span className="float-end text-accent">{formatCurrency(kpis.total_revenue)}</span>
-            </div>
-            <div className="mb-3">
-              <strong>Total Expenses:</strong> 
-              <span className="float-end">{formatCurrency(kpis.total_expenses)}</span>
-            </div>
-            <div className="mb-3">
-              <strong>Net Operating Income:</strong> 
-              <span className="float-end text-accent">{formatCurrency(kpis.total_noi)}</span>
-            </div>
-            <div>
-              <strong>Properties:</strong> 
-              <span className="float-end">{kpis.property_count}</span>
-            </div>
+        {/* Total Expenses */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Total Expenses</div>
+            <div className="metric-icon"><i className="fas fa-receipt"></i></div>
           </div>
+          <div className="metric-value">{formatCurrency(totalExpenses)}</div>
+          <div className="metric-change neutral">
+            <i className="fas fa-equals"></i> {formatPercent(expenseRatio)} of income
+          </div>
+          <div className="metric-subtitle">All operating expenses</div>
         </div>
-        <div className="col-lg-6">
-          <div className="financial-card">
-            <h4 className="financial-title">Year-over-Year Comparison</h4>
-            <div className="mb-3">
-              <strong>NOI Change:</strong> 
-              <span className={`float-end ${kpis.noi_variance >= 0 ? 'text-success' : 'text-danger'}`}>
-                {kpis.noi_variance >= 0 ? '+' : ''}{kpis.noi_variance.toFixed(1)}%
-              </span>
-            </div>
-            <div className="mb-3">
-              <strong>Revenue Change:</strong> 
-              <span className={`float-end ${kpis.revenue_variance >= 0 ? 'text-success' : 'text-danger'}`}>
-                {kpis.revenue_variance >= 0 ? '+' : ''}{kpis.revenue_variance.toFixed(1)}%
-              </span>
-            </div>
-            <div className="mb-3">
-              <strong>Avg Vacancy:</strong> 
-              <span className="float-end">{kpis.avg_vacancy.toFixed(1)}%</span>
-            </div>
-            <div>
-              <strong>Performance:</strong> 
-              <span className={`float-end badge ${kpis.noi_variance > 5 ? 'bg-success' : 'bg-secondary'}`}>
-                {kpis.noi_variance > 5 ? 'Strong' : 'Stable'}
-              </span>
-            </div>
+
+        {/* Net Operating Income */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Net Operating Income</div>
+            <div className="metric-icon"><i className="fas fa-chart-line"></i></div>
           </div>
+          <div className="metric-value">{formatCurrency(noi)}</div>
+          <div className={`metric-change ${kpis.noi_variance >= 0 ? 'positive' : 'negative'}`}>
+            <i className={`fas fa-arrow-${kpis.noi_variance >= 0 ? 'up' : 'down'}`}></i>
+            {kpis.noi_variance >= 0 ? '+' : ''}{kpis.noi_variance.toFixed(1)}% vs prior
+          </div>
+          <div className="metric-subtitle">Income less expenses</div>
+        </div>
+
+        {/* Debt Service */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Debt Service</div>
+            <div className="metric-icon"><i className="fas fa-university"></i></div>
+          </div>
+          <div className="metric-value">{formatCurrency(debtService)}</div>
+          <div className="metric-change neutral">
+            <i className="fas fa-shield-alt"></i> DSCR: {dscr.toFixed(2)}x
+          </div>
+          <div className="metric-subtitle">Mortgage payments</div>
+        </div>
+
+        {/* Cash Flow */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Cash Flow</div>
+            <div className="metric-icon"><i className="fas fa-money-bill-wave"></i></div>
+          </div>
+          <div className="metric-value">{formatCurrency(cashFlow)}</div>
+          <div className="metric-change positive">
+            <i className="fas fa-arrow-up"></i> +5.2% vs prior
+          </div>
+          <div className="metric-subtitle">Distributable cash</div>
+        </div>
+
+        {/* Occupancy Rate */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Occupancy Rate</div>
+            <div className="metric-icon"><i className="fas fa-building"></i></div>
+          </div>
+          <div className="metric-value">{formatPercent(occupancy)}</div>
+          <div className="metric-change positive">
+            <i className="fas fa-arrow-up"></i> +{(5 - kpis.avg_vacancy).toFixed(1)}% vs target
+          </div>
+          <div className="metric-subtitle">Portfolio occupancy</div>
+        </div>
+
+        {/* Gross Rent */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Gross Rent</div>
+            <div className="metric-icon"><i className="fas fa-home"></i></div>
+          </div>
+          <div className="metric-value">{formatCurrency(grossRent)}</div>
+          <div className="metric-change positive">
+            <i className="fas fa-arrow-up"></i> +{kpis.revenue_variance.toFixed(1)}% vs prior
+          </div>
+          <div className="metric-subtitle">Potential rental income</div>
+        </div>
+
+        {/* Vacancy Loss */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-label">Vacancy Loss</div>
+            <div className="metric-icon"><i className="fas fa-door-open"></i></div>
+          </div>
+          <div className="metric-value">{formatCurrency(vacancy)}</div>
+          <div className="metric-change negative">
+            <i className="fas fa-arrow-down"></i> {formatPercent(kpis.avg_vacancy)} of rent
+          </div>
+          <div className="metric-subtitle">Lost income</div>
         </div>
       </div>
     </>

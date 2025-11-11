@@ -219,11 +219,16 @@ export async function getMonthlyPerformance(year: number): Promise<MonthlyPerfor
 export interface PropertyDetail {
   PropertyID: number;
   PropertyName: string;
+  Address: string;
+  City: string;
+  State: string;
+  PurchasePrice: number;
   TotalUnits: number;
   TotalRevenue: number;
   TotalExpenses: number;
   TotalNOI: number;
   AvgVacancy: number;
+  OccupancyRate: number;
   MonthsReported: number;
 }
 
@@ -235,36 +240,50 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
 
     const { data: properties, error: propError } = await client
       .from('properties')
-      .select('PropertyID, PropertyName, Units');
+      .select('propertyid, propertyname, address, city, state, purchaseprice, units');
 
-    if (propError) throw propError;
+    if (propError) {
+      console.error('❌ Error fetching properties:', propError);
+      throw propError;
+    }
 
     const { data: financials, error: finError } = await client
       .from('monthlyfinancials')
-      .select('PropertyID, TotalIncome, TotalExpenses, NOI, Vacancy, ReportingMonth')
-      .gte('ReportingMonth', startDate)
-      .lte('ReportingMonth', endDate);
+      .select('propertyid, totalincome, totalexpenses, noi, vacancy, occupancy, reportingmonth')
+      .gte('reportingmonth', startDate)
+      .lte('reportingmonth', endDate);
 
-    if (finError) throw finError;
+    if (finError) {
+      console.error('❌ Error fetching financials:', finError);
+      throw finError;
+    }
 
-    return properties.map(prop => {
-      const propFinancials = financials?.filter(f => f.PropertyID === prop.PropertyID) || [];
-      const totalRevenue = propFinancials.reduce((sum, f) => sum + Number(f.TotalIncome || 0), 0);
-      const totalExpenses = propFinancials.reduce((sum, f) => sum + Number(f.TotalExpenses || 0), 0);
-      const totalNOI = propFinancials.reduce((sum, f) => sum + Number(f.NOI || 0), 0);
+    return properties.map((prop: any) => {
+      const propFinancials = financials?.filter((f: any) => f.propertyid === prop.propertyid) || [];
+      const totalRevenue = propFinancials.reduce((sum, f: any) => sum + Number(f.totalincome || 0), 0);
+      const totalExpenses = propFinancials.reduce((sum, f: any) => sum + Number(f.totalexpenses || 0), 0);
+      const totalNOI = propFinancials.reduce((sum, f: any) => sum + Number(f.noi || 0), 0);
       const avgVacancy = propFinancials.length
-        ? Math.min(Math.max(propFinancials.reduce((sum, f) => sum + Number(f.Vacancy || 0), 0) / propFinancials.length, 0), 100)
+        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.vacancy || 0), 0) / propFinancials.length, 0), 100)
         : 0;
-      const monthsReported = new Set(propFinancials.map(f => f.ReportingMonth)).size;
+      const avgOccupancy = propFinancials.length
+        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.occupancy || 0), 0) / propFinancials.length, 0), 100)
+        : 0;
+      const monthsReported = new Set(propFinancials.map((f: any) => f.reportingmonth)).size;
 
       return {
-        PropertyID: prop.PropertyID,
-        PropertyName: prop.PropertyName,
-        TotalUnits: prop.Units,
+        PropertyID: prop.propertyid,
+        PropertyName: prop.propertyname,
+        Address: prop.address || 'N/A',
+        City: prop.city || 'N/A',
+        State: prop.state || 'N/A',
+        PurchasePrice: Number(prop.purchaseprice || 0),
+        TotalUnits: prop.units,
         TotalRevenue: totalRevenue,
         TotalExpenses: totalExpenses,
         TotalNOI: totalNOI,
         AvgVacancy: avgVacancy,
+        OccupancyRate: avgOccupancy,
         MonthsReported: monthsReported
       };
     }).sort((a, b) => a.PropertyName.localeCompare(b.PropertyName));
@@ -277,6 +296,8 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
 export interface Property {
   PropertyID: number;
   PropertyName: string;
+  propertyid?: number;
+  propertyname?: string;
 }
 
 export async function getPropertyList(): Promise<Property[]> {
@@ -286,8 +307,8 @@ export async function getPropertyList(): Promise<Property[]> {
 
     const { data, error } = await client
       .from('properties')
-      .select('PropertyID, PropertyName')
-      .order('PropertyName');
+      .select('propertyid, propertyname')
+      .order('propertyname');
 
     if (error) {
       console.error('❌ Error fetching property list:', error);
@@ -298,7 +319,11 @@ export async function getPropertyList(): Promise<Property[]> {
     }
 
     console.log('✅ Property list fetched:', data?.length || 0, 'properties');
-    return data || [];
+    // Map lowercase column names to PascalCase for backward compatibility
+    return (data || []).map((prop: any) => ({
+      PropertyID: prop.propertyid,
+      PropertyName: prop.propertyname
+    }));
   } catch (error) {
     console.error('❌ Exception in getPropertyList:', error);
     throw error;
