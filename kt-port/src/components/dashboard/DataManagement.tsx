@@ -36,7 +36,7 @@ export default function DataManagement() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(2024);
   const [selectedProperty, setSelectedProperty] = useState<number | ''>('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 

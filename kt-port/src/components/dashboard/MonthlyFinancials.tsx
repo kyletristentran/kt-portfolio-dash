@@ -697,7 +697,7 @@ function FinancialHistoryTab({ properties }: FinancialHistoryTabProps) {
   }[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<number | ''>('');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(2024);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
