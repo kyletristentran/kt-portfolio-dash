@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, currentUser, onLogout }: DashboardLayoutProps) {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(2024);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 

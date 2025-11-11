@@ -1,62 +1,61 @@
-import sql from 'mssql';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Database configuration matching your original HTML dashboard
-const dbConfig: sql.config = {
-  server: "kyletristentran.database.windows.net",
-  database: "MultifamilyRealEstateDB",
-  user: "kyletristentran",
-  password: "Tran1105",
-  options: {
-    encrypt: true,
-    trustServerCertificate: false,
-  },
-  connectionTimeout: 30000,
-  requestTimeout: 30000,
-};
+// Supabase configuration
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Connection pool
-let pool: sql.ConnectionPool | null = null;
+// Create Supabase client
+let supabase: SupabaseClient | null = null;
 
-export async function getConnection(): Promise<sql.ConnectionPool> {
-  if (!pool || !pool.connected) {
-    try {
-      pool = new sql.ConnectionPool(dbConfig);
-      await pool.connect();
-      console.log('Connected to Azure SQL Database');
-    } catch (error) {
-      console.error('Database connection failed:', error);
-      throw error;
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabase) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ Supabase credentials missing!');
+      console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing');
+      console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing');
+      throw new Error('Supabase credentials not configured');
     }
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('✅ Connected to Supabase:', supabaseUrl);
   }
-  return pool;
+  return supabase;
 }
 
 export async function testConnection(): Promise<{ success: boolean; message: string; tableCount?: number }> {
   try {
-    const pool = await getConnection();
-    const result = await pool.request().query(`
-      SELECT COUNT(*) as table_count 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_TYPE = 'BASE TABLE'
-    `);
-    
+    const client = getSupabaseClient();
+
+    // Query to count tables
+    const { data, error } = await client
+      .from('information_schema.tables')
+      .select('table_name', { count: 'exact' })
+      .eq('table_schema', 'public')
+      .eq('table_type', 'BASE TABLE');
+
+    if (error) {
+      // Fallback: just test connection with a simple query
+      const { error: testError } = await client.from('properties').select('count').limit(1);
+
+      if (testError) {
+        throw testError;
+      }
+
+      return {
+        success: true,
+        message: 'Supabase connection successful'
+      };
+    }
+
     return {
       success: true,
-      message: 'Database connection successful',
-      tableCount: result.recordset[0].table_count
+      message: 'Supabase connection successful',
+      tableCount: data?.length || 0
     };
   } catch (error) {
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown database error'
     };
-  }
-}
-
-export async function closeConnection(): Promise<void> {
-  if (pool) {
-    await pool.close();
-    pool = null;
   }
 }
 
@@ -76,74 +75,78 @@ export interface DashboardKPIs {
 
 export async function getPortfolioKPIs(year: number): Promise<DashboardKPIs> {
   try {
-    const pool = await getConnection();
-    
-    // Current year YTD metrics
-    const currentQuery = `
-      SELECT 
-        ISNULL(SUM(TotalIncome), 0) as total_revenue,
-        ISNULL(SUM(TotalExpenses), 0) as total_expenses,
-        ISNULL(SUM(NOI), 0) as total_noi,
-        CASE 
-          WHEN AVG(Vacancy) > 100 THEN AVG(Vacancy) / 100
-          WHEN AVG(Vacancy) < 0 THEN 0
-          ELSE ISNULL(AVG(Vacancy), 0)
-        END as avg_vacancy,
-        COUNT(DISTINCT PropertyID) as property_count
-      FROM dbo.MonthlyFinancials mf
-      WHERE YEAR(ReportingMonth) = @year AND MONTH(ReportingMonth) <= MONTH(GETDATE())
-    `;
-    
-    const currentResult = await pool.request()
-      .input('year', sql.Int, year)
-      .query(currentQuery);
-    
-    // Previous year same period for variance calculation
-    const prevYearQuery = `
-      SELECT 
-        ISNULL(SUM(NOI), 0) as prev_noi,
-        ISNULL(SUM(TotalIncome), 0) as prev_revenue
-      FROM dbo.MonthlyFinancials mf
-      WHERE YEAR(ReportingMonth) = @prevYear AND MONTH(ReportingMonth) <= MONTH(GETDATE())
-    `;
-    
-    const prevResult = await pool.request()
-      .input('prevYear', sql.Int, year - 1)
-      .query(prevYearQuery);
-    
-    // Property values for portfolio value calculation
-    const portfolioQuery = `
-      SELECT ISNULL(SUM(PurchasePrice), 0) as total_portfolio_value
-      FROM dbo.Properties
-    `;
-    
-    const portfolioResult = await pool.request().query(portfolioQuery);
-    
-    const current = currentResult.recordset[0];
-    const prev = prevResult.recordset[0];
-    const portfolio = portfolioResult.recordset[0];
-    
-    // Calculate variances
-    const noi_variance = prev.prev_noi !== 0 
-      ? ((current.total_noi - prev.prev_noi) / prev.prev_noi * 100) 
-      : 0;
-    
-    const revenue_variance = prev.prev_revenue !== 0 
-      ? ((current.total_revenue - prev.prev_revenue) / prev.prev_revenue * 100) 
-      : 0;
-    
-    return {
-      total_portfolio_value: portfolio.total_portfolio_value || 0,
-      total_revenue: current.total_revenue || 0,
-      total_expenses: current.total_expenses || 0,
-      total_noi: current.total_noi || 0,
-      avg_vacancy: Math.min(Math.max(current.avg_vacancy || 0, 0), 100),
-      property_count: current.property_count || 0,
-      noi_variance,
-      revenue_variance,
-      prev_noi: prev.prev_noi || 0,
-      prev_revenue: prev.prev_revenue || 0
-    };
+    const client = getSupabaseClient();
+    console.log(`📊 Fetching portfolio KPIs for year: ${year}`);
+
+    // Get current year metrics
+    const { data: currentData, error: currentError } = await client.rpc('get_portfolio_kpis', {
+      p_year: year
+    });
+
+    if (currentError) {
+      console.log('⚠️ RPC function not available, using manual calculation');
+      // Fallback to manual calculation if RPC doesn't exist
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+
+      const { data: financials, error: finError } = await client
+        .from('monthlyfinancials')
+        .select('totalincome, totalexpenses, noi, vacancy, propertyid')
+        .gte('reportingmonth', startDate)
+        .lte('reportingmonth', endDate);
+
+      if (finError) {
+        console.error('❌ Error fetching financials for KPIs:', finError);
+        throw finError;
+      }
+      console.log(`✅ Fetched ${financials?.length || 0} financial records for ${year}`);
+
+      const { data: properties, error: propError } = await client
+        .from('properties')
+        .select('propertyid');
+
+      if (propError) {
+        console.error('❌ Error fetching properties:', propError);
+        throw propError;
+      }
+      console.log(`✅ Fetched ${properties?.length || 0} properties`);
+
+      const { data: prevFinancials } = await client
+        .from('monthlyfinancials')
+        .select('totalincome, noi')
+        .gte('reportingmonth', `${year - 1}-01-01`)
+        .lte('reportingmonth', `${year - 1}-12-31`);
+
+      const total_revenue = financials?.reduce((sum, f) => sum + Number(f.totalincome || 0), 0) || 0;
+      const total_expenses = financials?.reduce((sum, f) => sum + Number(f.totalexpenses || 0), 0) || 0;
+      const total_noi = financials?.reduce((sum, f) => sum + Number(f.noi || 0), 0) || 0;
+      const avg_vacancy = financials?.length
+        ? Math.min(Math.max(financials.reduce((sum, f) => sum + Number(f.vacancy || 0), 0) / financials.length, 0), 100)
+        : 0;
+      const property_count = new Set(financials?.map(f => f.propertyid)).size;
+      const total_portfolio_value = 0; // Portfolio value not tracked in simplified schema
+
+      const prev_revenue = prevFinancials?.reduce((sum, f) => sum + Number(f.totalincome || 0), 0) || 0;
+      const prev_noi = prevFinancials?.reduce((sum, f) => sum + Number(f.noi || 0), 0) || 0;
+
+      const noi_variance = prev_noi !== 0 ? ((total_noi - prev_noi) / prev_noi * 100) : 0;
+      const revenue_variance = prev_revenue !== 0 ? ((total_revenue - prev_revenue) / prev_revenue * 100) : 0;
+
+      return {
+        total_portfolio_value,
+        total_revenue,
+        total_expenses,
+        total_noi,
+        avg_vacancy,
+        property_count,
+        noi_variance,
+        revenue_variance,
+        prev_noi,
+        prev_revenue
+      };
+    }
+
+    return currentData[0];
   } catch (error) {
     console.error('Error fetching KPIs:', error);
     throw error;
@@ -161,31 +164,52 @@ export interface MonthlyPerformance {
 
 export async function getMonthlyPerformance(year: number): Promise<MonthlyPerformance[]> {
   try {
-    const pool = await getConnection();
-    
-    const query = `
-      SELECT 
-        ReportingMonth,
-        ISNULL(SUM(TotalIncome), 0) as Revenue,
-        ISNULL(SUM(TotalExpenses), 0) as Expenses,
-        ISNULL(SUM(NOI), 0) as NOI,
-        ISNULL(SUM(CashFlow), 0) as CashFlow,
-        CASE 
-          WHEN AVG(Vacancy) > 100 THEN AVG(Vacancy) / 100
-          WHEN AVG(Vacancy) < 0 THEN 0
-          ELSE ISNULL(AVG(Vacancy), 0)
-        END as Vacancy
-      FROM dbo.MonthlyFinancials
-      WHERE YEAR(ReportingMonth) = @year
-      GROUP BY ReportingMonth
-      ORDER BY ReportingMonth
-    `;
-    
-    const result = await pool.request()
-      .input('year', sql.Int, year)
-      .query(query);
-    
-    return result.recordset;
+    const client = getSupabaseClient();
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const { data, error} = await client
+      .from('monthlyfinancials')
+      .select('reportingmonth, totalincome, totalexpenses, noi, cashflow, vacancy')
+      .gte('reportingmonth', startDate)
+      .lte('reportingmonth', endDate)
+      .order('reportingmonth');
+
+    if (error) throw error;
+
+    // Group by month and aggregate
+    const monthlyMap = new Map<string, MonthlyPerformance>();
+
+    data?.forEach(record => {
+      const monthKey = record.reportingmonth;
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, {
+          ReportingMonth: new Date(record.reportingmonth),
+          Revenue: 0,
+          Expenses: 0,
+          NOI: 0,
+          CashFlow: 0,
+          Vacancy: 0
+        });
+      }
+
+      const monthData = monthlyMap.get(monthKey)!;
+      monthData.Revenue += Number(record.totalincome || 0);
+      monthData.Expenses += Number(record.totalexpenses || 0);
+      monthData.NOI += Number(record.noi || 0);
+      monthData.CashFlow += Number(record.cashflow || 0);
+      monthData.Vacancy += Number(record.vacancy || 0);
+    });
+
+    const result = Array.from(monthlyMap.values());
+
+    // Calculate average vacancy
+    result.forEach(month => {
+      const count = data?.filter(d => d.reportingmonth === month.ReportingMonth.toISOString().split('T')[0]).length || 1;
+      month.Vacancy = Math.min(Math.max(month.Vacancy / count, 0), 100);
+    });
+
+    return result;
   } catch (error) {
     console.error('Error fetching monthly performance:', error);
     throw error;
@@ -195,7 +219,6 @@ export async function getMonthlyPerformance(year: number): Promise<MonthlyPerfor
 export interface PropertyDetail {
   PropertyID: number;
   PropertyName: string;
-  PurchasePrice: number;
   TotalUnits: number;
   TotalRevenue: number;
   TotalExpenses: number;
@@ -206,38 +229,45 @@ export interface PropertyDetail {
 
 export async function getPropertyDetails(year: number): Promise<PropertyDetail[]> {
   try {
-    const pool = await getConnection();
-    
-    const query = `
-      SELECT 
-        p.PropertyID,
-        p.PropertyName,
-        p.PurchasePrice,
-        p.UnitCount as TotalUnits,
-        COALESCE(SUM(mf.TotalIncome), 0) as TotalRevenue,
-        COALESCE(SUM(mf.TotalExpenses), 0) as TotalExpenses,
-        COALESCE(SUM(mf.NOI), 0) as TotalNOI,
-        CASE 
-          WHEN AVG(mf.Vacancy) > 100 THEN AVG(mf.Vacancy) / 100
-          WHEN AVG(mf.Vacancy) < 0 THEN 0
-          ELSE COALESCE(AVG(mf.Vacancy), 0)
-        END as AvgVacancy,
-        COUNT(DISTINCT mf.ReportingMonth) as MonthsReported
-      FROM dbo.Properties p
-      LEFT JOIN dbo.MonthlyFinancials mf ON p.PropertyID = mf.PropertyID
-        AND YEAR(mf.ReportingMonth) = @year
-      GROUP BY p.PropertyID, p.PropertyName, p.PurchasePrice, p.UnitCount
-      ORDER BY p.PropertyName
-    `;
-    
-    const result = await pool.request()
-      .input('year', sql.Int, year)
-      .query(query);
-    
-    return result.recordset.map(row => ({
-      ...row,
-      AvgVacancy: Math.min(Math.max(row.AvgVacancy, 0), 100)
-    }));
+    const client = getSupabaseClient();
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const { data: properties, error: propError } = await client
+      .from('properties')
+      .select('PropertyID, PropertyName, Units');
+
+    if (propError) throw propError;
+
+    const { data: financials, error: finError } = await client
+      .from('monthlyfinancials')
+      .select('PropertyID, TotalIncome, TotalExpenses, NOI, Vacancy, ReportingMonth')
+      .gte('ReportingMonth', startDate)
+      .lte('ReportingMonth', endDate);
+
+    if (finError) throw finError;
+
+    return properties.map(prop => {
+      const propFinancials = financials?.filter(f => f.PropertyID === prop.PropertyID) || [];
+      const totalRevenue = propFinancials.reduce((sum, f) => sum + Number(f.TotalIncome || 0), 0);
+      const totalExpenses = propFinancials.reduce((sum, f) => sum + Number(f.TotalExpenses || 0), 0);
+      const totalNOI = propFinancials.reduce((sum, f) => sum + Number(f.NOI || 0), 0);
+      const avgVacancy = propFinancials.length
+        ? Math.min(Math.max(propFinancials.reduce((sum, f) => sum + Number(f.Vacancy || 0), 0) / propFinancials.length, 0), 100)
+        : 0;
+      const monthsReported = new Set(propFinancials.map(f => f.ReportingMonth)).size;
+
+      return {
+        PropertyID: prop.PropertyID,
+        PropertyName: prop.PropertyName,
+        TotalUnits: prop.Units,
+        TotalRevenue: totalRevenue,
+        TotalExpenses: totalExpenses,
+        TotalNOI: totalNOI,
+        AvgVacancy: avgVacancy,
+        MonthsReported: monthsReported
+      };
+    }).sort((a, b) => a.PropertyName.localeCompare(b.PropertyName));
   } catch (error) {
     console.error('Error fetching property details:', error);
     throw error;
@@ -251,18 +281,26 @@ export interface Property {
 
 export async function getPropertyList(): Promise<Property[]> {
   try {
-    const pool = await getConnection();
-    
-    const query = `
-      SELECT PropertyID, PropertyName 
-      FROM dbo.Properties 
-      ORDER BY PropertyName
-    `;
-    
-    const result = await pool.request().query(query);
-    return result.recordset;
+    const client = getSupabaseClient();
+    console.log('📋 Fetching property list from Supabase...');
+
+    const { data, error } = await client
+      .from('properties')
+      .select('PropertyID, PropertyName')
+      .order('PropertyName');
+
+    if (error) {
+      console.error('❌ Error fetching property list:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      throw error;
+    }
+
+    console.log('✅ Property list fetched:', data?.length || 0, 'properties');
+    return data || [];
   } catch (error) {
-    console.error('Error fetching property list:', error);
+    console.error('❌ Exception in getPropertyList:', error);
     throw error;
   }
 }
@@ -288,98 +326,61 @@ export interface FinancialData {
 }
 
 export async function importMonthlyFinancials(
-  propertyId: number, 
-  reportingMonth: Date, 
+  propertyId: number,
+  reportingMonth: Date,
   data: FinancialData
 ): Promise<boolean> {
   try {
-    const pool = await getConnection();
-    
+    const client = getSupabaseClient();
+    const monthStr = reportingMonth.toISOString().split('T')[0];
+
     // Check if record exists
-    const checkQuery = `
-      SELECT FinancialID FROM dbo.MonthlyFinancials 
-      WHERE PropertyID = @propertyId AND ReportingMonth = @reportingMonth
-    `;
-    
-    const checkResult = await pool.request()
-      .input('propertyId', sql.Int, propertyId)
-      .input('reportingMonth', sql.Date, reportingMonth)
-      .query(checkQuery);
-    
-    if (checkResult.recordset.length > 0) {
+    const { data: existing, error: checkError } = await client
+      .from('monthlyfinancials')
+      .select('FinancialID')
+      .eq('PropertyID', propertyId)
+      .eq('ReportingMonth', monthStr)
+      .single();
+
+    const financialData = {
+      PropertyID: propertyId,
+      ReportingMonth: monthStr,
+      GrossRent: data.GrossRent,
+      Vacancy: data.Vacancy,
+      OtherIncome: data.OtherIncome,
+      TotalIncome: data.TotalIncome,
+      RepairsMaintenance: data.RepairsMaintenance,
+      Utilities: data.Utilities,
+      PropertyManagement: data.PropertyManagement,
+      PropertyTaxes: data.PropertyTaxes,
+      Insurance: data.Insurance,
+      Marketing: data.Marketing,
+      Administrative: data.Administrative,
+      TotalExpenses: data.TotalExpenses,
+      NOI: data.NOI,
+      DebtService: data.DebtService,
+      CashFlow: data.CashFlow,
+      Occupancy: data.Occupancy,
+      FilePath: data.FilePath || 'Next.js Import'
+    };
+
+    if (existing && !checkError) {
       // Update existing record
-      const financialId = checkResult.recordset[0].FinancialID;
-      const updateQuery = `
-        UPDATE dbo.MonthlyFinancials SET
-          GrossRent = @grossRent, Vacancy = @vacancy, OtherIncome = @otherIncome, 
-          TotalIncome = @totalIncome, RepairsMaintenance = @repairsMaintenance, 
-          Utilities = @utilities, PropertyManagement = @propertyManagement,
-          PropertyTaxes = @propertyTaxes, Insurance = @insurance, Marketing = @marketing, 
-          Administrative = @administrative, TotalExpenses = @totalExpenses, NOI = @noi, 
-          DebtService = @debtService, CashFlow = @cashFlow, Occupancy = @occupancy, 
-          FilePath = @filePath
-        WHERE FinancialID = @financialId
-      `;
-      
-      await pool.request()
-        .input('grossRent', sql.Decimal(18, 2), data.GrossRent)
-        .input('vacancy', sql.Decimal(18, 2), data.Vacancy)
-        .input('otherIncome', sql.Decimal(18, 2), data.OtherIncome)
-        .input('totalIncome', sql.Decimal(18, 2), data.TotalIncome)
-        .input('repairsMaintenance', sql.Decimal(18, 2), data.RepairsMaintenance)
-        .input('utilities', sql.Decimal(18, 2), data.Utilities)
-        .input('propertyManagement', sql.Decimal(18, 2), data.PropertyManagement)
-        .input('propertyTaxes', sql.Decimal(18, 2), data.PropertyTaxes)
-        .input('insurance', sql.Decimal(18, 2), data.Insurance)
-        .input('marketing', sql.Decimal(18, 2), data.Marketing)
-        .input('administrative', sql.Decimal(18, 2), data.Administrative)
-        .input('totalExpenses', sql.Decimal(18, 2), data.TotalExpenses)
-        .input('noi', sql.Decimal(18, 2), data.NOI)
-        .input('debtService', sql.Decimal(18, 2), data.DebtService)
-        .input('cashFlow', sql.Decimal(18, 2), data.CashFlow)
-        .input('occupancy', sql.Decimal(5, 2), data.Occupancy)
-        .input('filePath', sql.NVarChar(255), data.FilePath || 'Next.js Import')
-        .input('financialId', sql.Int, financialId)
-        .query(updateQuery);
+      const { error: updateError } = await client
+        .from('monthlyfinancials')
+        .update(financialData)
+        .eq('FinancialID', existing.FinancialID);
+
+      if (updateError) throw updateError;
     } else {
       // Insert new record
-      const insertQuery = `
-        INSERT INTO dbo.MonthlyFinancials (
-          PropertyID, ReportingMonth, GrossRent, Vacancy, OtherIncome, TotalIncome,
-          RepairsMaintenance, Utilities, PropertyManagement, PropertyTaxes, Insurance,
-          Marketing, Administrative, TotalExpenses, NOI, DebtService, CashFlow,
-          Occupancy, FilePath
-        ) VALUES (
-          @propertyId, @reportingMonth, @grossRent, @vacancy, @otherIncome, @totalIncome,
-          @repairsMaintenance, @utilities, @propertyManagement, @propertyTaxes, @insurance,
-          @marketing, @administrative, @totalExpenses, @noi, @debtService, @cashFlow,
-          @occupancy, @filePath
-        )
-      `;
-      
-      await pool.request()
-        .input('propertyId', sql.Int, propertyId)
-        .input('reportingMonth', sql.Date, reportingMonth)
-        .input('grossRent', sql.Decimal(18, 2), data.GrossRent)
-        .input('vacancy', sql.Decimal(18, 2), data.Vacancy)
-        .input('otherIncome', sql.Decimal(18, 2), data.OtherIncome)
-        .input('totalIncome', sql.Decimal(18, 2), data.TotalIncome)
-        .input('repairsMaintenance', sql.Decimal(18, 2), data.RepairsMaintenance)
-        .input('utilities', sql.Decimal(18, 2), data.Utilities)
-        .input('propertyManagement', sql.Decimal(18, 2), data.PropertyManagement)
-        .input('propertyTaxes', sql.Decimal(18, 2), data.PropertyTaxes)
-        .input('insurance', sql.Decimal(18, 2), data.Insurance)
-        .input('marketing', sql.Decimal(18, 2), data.Marketing)
-        .input('administrative', sql.Decimal(18, 2), data.Administrative)
-        .input('totalExpenses', sql.Decimal(18, 2), data.TotalExpenses)
-        .input('noi', sql.Decimal(18, 2), data.NOI)
-        .input('debtService', sql.Decimal(18, 2), data.DebtService)
-        .input('cashFlow', sql.Decimal(18, 2), data.CashFlow)
-        .input('occupancy', sql.Decimal(5, 2), data.Occupancy)
-        .input('filePath', sql.NVarChar(255), data.FilePath || 'Next.js Import')
-        .query(insertQuery);
+      const { error: insertError } = await client
+        .from('monthlyfinancials')
+        .insert(financialData);
+
+      if (insertError) throw insertError;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error importing financial data:', error);
@@ -413,41 +414,74 @@ export interface MonthlyFinancialRecord {
 
 export async function getMonthlyFinancialRecords(year?: number, propertyId?: number): Promise<MonthlyFinancialRecord[]> {
   try {
-    const pool = await getConnection();
-    
-    let whereClause = '';
-    const inputs: { name: string; type: sql.ISqlTypeFactoryWithNoParams; value: unknown }[] = [];
-    
+    const client = getSupabaseClient();
+
+    let query = client
+      .from('monthlyfinancials')
+      .select(`
+        FinancialID,
+        PropertyID,
+        ReportingMonth,
+        GrossRent,
+        Vacancy,
+        OtherIncome,
+        TotalIncome,
+        RepairsMaintenance,
+        Utilities,
+        PropertyManagement,
+        PropertyTaxes,
+        Insurance,
+        Marketing,
+        Administrative,
+        TotalExpenses,
+        NOI,
+        DebtService,
+        CashFlow,
+        Occupancy,
+        FilePath,
+        Properties (
+          PropertyName
+        )
+      `)
+      .order('ReportingMonth', { ascending: false });
+
     if (year) {
-      whereClause += ' WHERE YEAR(mf.ReportingMonth) = @year';
-      inputs.push({ name: 'year', type: sql.Int, value: year });
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+      query = query.gte('ReportingMonth', startDate).lte('ReportingMonth', endDate);
     }
-    
+
     if (propertyId) {
-      whereClause += (whereClause ? ' AND' : ' WHERE') + ' mf.PropertyID = @propertyId';
-      inputs.push({ name: 'propertyId', type: sql.Int, value: propertyId });
+      query = query.eq('PropertyID', propertyId);
     }
-    
-    const query = `
-      SELECT 
-        mf.FinancialID, mf.PropertyID, p.PropertyName, mf.ReportingMonth,
-        mf.GrossRent, mf.Vacancy, mf.OtherIncome, mf.TotalIncome,
-        mf.RepairsMaintenance, mf.Utilities, mf.PropertyManagement, mf.PropertyTaxes,
-        mf.Insurance, mf.Marketing, mf.Administrative, mf.TotalExpenses,
-        mf.NOI, mf.DebtService, mf.CashFlow, mf.Occupancy, mf.FilePath
-      FROM dbo.MonthlyFinancials mf
-      INNER JOIN dbo.Properties p ON mf.PropertyID = p.PropertyID
-      ${whereClause}
-      ORDER BY mf.ReportingMonth DESC, p.PropertyName
-    `;
-    
-    const request = pool.request();
-    inputs.forEach(input => {
-      request.input(input.name, input.type, input.value);
-    });
-    
-    const result = await request.query(query);
-    return result.recordset;
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return data.map((record: any) => ({
+      FinancialID: record.FinancialID,
+      PropertyID: record.PropertyID,
+      PropertyName: record.Properties?.PropertyName || '',
+      ReportingMonth: new Date(record.ReportingMonth),
+      GrossRent: Number(record.GrossRent),
+      Vacancy: Number(record.Vacancy),
+      OtherIncome: Number(record.OtherIncome),
+      TotalIncome: Number(record.TotalIncome),
+      RepairsMaintenance: Number(record.RepairsMaintenance),
+      Utilities: Number(record.Utilities),
+      PropertyManagement: Number(record.PropertyManagement),
+      PropertyTaxes: Number(record.PropertyTaxes),
+      Insurance: Number(record.Insurance),
+      Marketing: Number(record.Marketing),
+      Administrative: Number(record.Administrative),
+      TotalExpenses: Number(record.TotalExpenses),
+      NOI: Number(record.NOI),
+      DebtService: Number(record.DebtService),
+      CashFlow: Number(record.CashFlow),
+      Occupancy: Number(record.Occupancy),
+      FilePath: record.FilePath || ''
+    }));
   } catch (error) {
     console.error('Error fetching monthly financial records:', error);
     throw error;
@@ -456,14 +490,15 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
 
 export async function deleteMonthlyFinancialRecord(financialId: number): Promise<boolean> {
   try {
-    const pool = await getConnection();
-    
-    const query = `DELETE FROM dbo.MonthlyFinancials WHERE FinancialID = @financialId`;
-    
-    await pool.request()
-      .input('financialId', sql.Int, financialId)
-      .query(query);
-    
+    const client = getSupabaseClient();
+
+    const { error } = await client
+      .from('monthlyfinancials')
+      .delete()
+      .eq('FinancialID', financialId);
+
+    if (error) throw error;
+
     return true;
   } catch (error) {
     console.error('Error deleting financial record:', error);

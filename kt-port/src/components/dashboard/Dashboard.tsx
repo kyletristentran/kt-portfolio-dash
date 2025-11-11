@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/components/auth/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import PerformanceOverview from './PerformanceOverview';
 import PortfolioAnalysis from './PortfolioAnalysis';
@@ -11,7 +11,7 @@ import DataManagement from './DataManagement';
 import MonthlyFinancials from './MonthlyFinancials';
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   const tabs = [
@@ -26,8 +26,10 @@ export default function Dashboard() {
   const activeTabComponent = tabs.find(tab => tab.id === activeTab)?.component;
   const ActiveComponent = activeTabComponent || PerformanceOverview;
 
+  const formattedUser = user ? { name: user.email || user.user_metadata?.full_name || 'User' } : null;
+
   return (
-    <DashboardLayout currentUser={user} onLogout={logout}>
+    <DashboardLayout currentUser={formattedUser} onLogout={signOut}>
       {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">Real Estate Investment Dashboard</h1>

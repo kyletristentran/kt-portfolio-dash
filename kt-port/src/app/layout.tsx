@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthProvider } from "@/components/auth/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
