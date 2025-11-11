@@ -187,6 +187,11 @@ body {
   height: 100%;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   border-radius: 0;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .metric-card:hover {
@@ -196,9 +201,12 @@ body {
 }
 
 .metric-value {
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
   font-weight: 700;
   color: var(--primary-navy);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.2;
 }
 
 .metric-label {

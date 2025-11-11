@@ -25,7 +25,7 @@ export default function PerformanceOverview() {
   const fetchKPIData = async () => {
     try {
       setLoading(true);
-      const year = new Date().getFullYear();
+      const year = 2024; // Using 2024 as we have data for this year
       const response = await fetch(`/api/dashboard/kpis?year=${year}`);
       
       if (!response.ok) {

@@ -103,7 +103,7 @@ export async function getPortfolioKPIs(year: number): Promise<DashboardKPIs> {
 
       const { data: properties, error: propError } = await client
         .from('properties')
-        .select('propertyid');
+        .select('propertyid, purchaseprice');
 
       if (propError) {
         console.error('❌ Error fetching properties:', propError);
@@ -124,7 +124,7 @@ export async function getPortfolioKPIs(year: number): Promise<DashboardKPIs> {
         ? Math.min(Math.max(financials.reduce((sum, f) => sum + Number(f.vacancy || 0), 0) / financials.length, 0), 100)
         : 0;
       const property_count = new Set(financials?.map(f => f.propertyid)).size;
-      const total_portfolio_value = 0; // Portfolio value not tracked in simplified schema
+      const total_portfolio_value = properties?.reduce((sum, p) => sum + Number(p.purchaseprice || 0), 0) || 0;
 
       const prev_revenue = prevFinancials?.reduce((sum, f) => sum + Number(f.totalincome || 0), 0) || 0;
       const prev_noi = prevFinancials?.reduce((sum, f) => sum + Number(f.noi || 0), 0) || 0;
