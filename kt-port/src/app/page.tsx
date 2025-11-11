@@ -1,13 +1,21 @@
 'use client';
 
-import { useAuth } from '@/components/auth/AuthContext';
-import LoginPage from '@/components/auth/LoginPage';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import Dashboard from '@/components/dashboard/Dashboard';
+import { useEffect } from 'react';
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
         <div className="spinner-border text-primary" role="status">
@@ -17,5 +25,5 @@ export default function Home() {
     );
   }
 
-  return user ? <Dashboard /> : <LoginPage />;
+  return user ? <Dashboard /> : null;
 }
