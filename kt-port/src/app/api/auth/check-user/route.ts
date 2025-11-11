@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         created_at: user.created_at,
         confirmed_at: user.confirmed_at,
         last_sign_in_at: user.last_sign_in_at,
-        has_password: user.encrypted_password ? 'Yes' : 'No - PASSWORD NEEDS TO BE SET!'
+        has_password: (user as any).encrypted_password ? 'Yes' : 'No - PASSWORD NEEDS TO BE SET!'
       }
     });
   } catch (error) {
