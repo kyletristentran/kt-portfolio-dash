@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import DemoLoginButton from './DemoLoginButton';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [showDemo, setShowDemo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +30,15 @@ export default function LoginPage() {
     }
   };
 
-  const showDemoAccount = () => {
-    setShowDemo(!showDemo);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleDemoSuccess = () => {
+    // Redirect to dashboard after successful demo login
+    router.push('/');
+  };
+
+  const handleDemoError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   return (
@@ -56,14 +65,24 @@ export default function LoginPage() {
           
           <div className="mb-3">
             <label className="form-label">Password</label>
-            <input 
-              type="password" 
-              className="form-control" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              required 
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="form-control"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+            </div>
           </div>
           
           {error && (
@@ -87,27 +106,17 @@ export default function LoginPage() {
             )}
           </button>
           
-          <button 
-            type="button" 
-            className="btn btn-trea-outline w-100" 
-            onClick={showDemoAccount}
-          >
-            Demo Access
-          </button>
-        </form>
-        
-        {showDemo && (
-          <div className="alert alert-info mt-3">
-            <h6 className="alert-heading">🎯 For Recruiters & Demo Access:</h6>
-            <div className="mb-2">
-              <strong>Username:</strong> kyle<br/>
-              <strong>Password:</strong> tran
-            </div>
-            <small className="text-muted">
-              💡 <em>Hint: The password is the creator&apos;s last name</em>
-            </small>
+          <div className="divider-container">
+            <div className="divider-line"></div>
+            <span className="divider-text">OR</span>
+            <div className="divider-line"></div>
           </div>
-        )}
+
+          <DemoLoginButton
+            onSuccess={handleDemoSuccess}
+            onError={handleDemoError}
+          />
+        </form>
       </div>
 
       <style jsx>{`
@@ -146,6 +155,88 @@ export default function LoginPage() {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 2px;
+        }
+
+        .divider-container {
+          display: flex;
+          align-items: center;
+          margin: 1.5rem 0;
+        }
+
+        .divider-line {
+          flex: 1;
+          height: 1px;
+          background-color: #dee2e6;
+        }
+
+        .divider-text {
+          padding: 0 1rem;
+          color: #6c757d;
+          font-size: 0.875rem;
+          font-weight: 600;
+        }
+
+        .alert {
+          padding: 1rem;
+          border-radius: 4px;
+          border: 1px solid transparent;
+        }
+
+        .alert-info {
+          background-color: #cfe2ff;
+          border-color: #b6d4fe;
+          color: #084298;
+        }
+
+        .alert-heading {
+          margin: 0 0 0.5rem 0;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .alert strong {
+          font-weight: 600;
+        }
+
+        .alert small {
+          display: block;
+          margin-top: 0.5rem;
+        }
+
+        .password-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .password-input-wrapper .form-control {
+          padding-right: 45px;
+        }
+
+        .password-toggle-btn {
+          position: absolute;
+          right: 12px;
+          background: none;
+          border: none;
+          color: #6c757d;
+          cursor: pointer;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.2s ease;
+        }
+
+        .password-toggle-btn:hover {
+          color: var(--primary-navy);
+        }
+
+        .password-toggle-btn:focus {
+          outline: none;
+        }
+
+        .password-toggle-btn i {
+          font-size: 1rem;
         }
       `}</style>
     </div>
