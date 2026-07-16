@@ -7,10 +7,10 @@ This directory contains SQL scripts for setting up demo data isolation and Row L
 Run these scripts **in order** in your Supabase SQL Editor:
 
 ### 1. Add user_id column (prerequisite for RLS)
-```sql
-ALTER TABLE properties ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
-CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);
+```bash
+# File: migrations/01_add_user_id_column.sql
 ```
+Adds `user_id` UUID column to link properties to Supabase Auth users.
 
 ### 2. Add demo flags
 ```bash
@@ -26,7 +26,7 @@ Creates 5 sample properties with 12 months of financial data.
 
 ### 4. Enable RLS
 ```bash
-# File: migrations/enable_rls.sql
+# File: migrations/02_enable_rls.sql
 ```
 Enables Row Level Security and creates access policies.
 
