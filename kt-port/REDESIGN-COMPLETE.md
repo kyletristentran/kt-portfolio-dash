@@ -132,7 +132,7 @@ The CSS theme is now applied globally. To fully match the HTML file design, you 
 
 Run these commands to see the current state:
 ```bash
-cd /Users/kyletran/Python/KT-Portfolio-Dash/kt-port
+cd /Users/kyletran/Developer/kt-webportfolio/KT-Portfolio-Dash/kt-port
 npm run dev
 # Open http://localhost:3003
 ```

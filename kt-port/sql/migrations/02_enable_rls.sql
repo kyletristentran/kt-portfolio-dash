@@ -1,4 +1,5 @@
 -- Enable Row Level Security (RLS) for data isolation
+-- ⚠️ IMPORTANT: Run 01_add_user_id_column.sql BEFORE running this script!
 -- This ensures users can only see their own data or demo data
 
 -- ============================================
@@ -39,18 +40,14 @@ FOR SELECT
 USING (is_demo = TRUE);
 
 -- Policy 2: Users can view their own non-demo properties
--- Note: This assumes you have a user_id column in properties table
--- If you don't have user_id yet, uncomment the ALTER TABLE below
--- ALTER TABLE properties ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
-
 CREATE POLICY "Users can view their own properties"
 ON properties
 FOR SELECT
 USING (
     is_demo = FALSE
     AND (
-        user_id = auth.uid()  -- If you have user_id column
-        OR auth.uid() IS NULL -- Allow unauthenticated access for now (remove in production)
+        user_id = auth.uid()  -- User owns this property
+        OR auth.uid() IS NULL -- ⚠️ REMOVE IN PRODUCTION - allows unauthenticated access
     )
 );
 
@@ -92,7 +89,6 @@ FOR SELECT
 USING (is_demo = TRUE);
 
 -- Policy 2: Users can view their own non-demo financials
--- Note: This checks the property ownership through the properties table
 CREATE POLICY "Users can view their own financials"
 ON monthlyfinancials
 FOR SELECT
@@ -102,8 +98,9 @@ USING (
         EXISTS (
             SELECT 1 FROM properties
             WHERE properties.propertyid = monthlyfinancials.propertyid
-            AND (properties.user_id = auth.uid() OR auth.uid() IS NULL)
+            AND properties.user_id = auth.uid()
         )
+        OR auth.uid() IS NULL -- ⚠️ REMOVE IN PRODUCTION
     )
 );
 
@@ -170,7 +167,7 @@ BEGIN
     SELECT * FROM properties
     WHERE is_demo = TRUE
     OR user_id = auth.uid()
-    OR auth.uid() IS NULL;  -- Remove this condition in production
+    OR auth.uid() IS NULL;  -- ⚠️ REMOVE IN PRODUCTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -189,9 +186,28 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON monthlyfinancials TO authenticated;
 GRANT SELECT ON properties TO anon;
 GRANT SELECT ON monthlyfinancials TO anon;
 
--- Grant access to sequences
+-- Grant access to sequences (if any)
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
+-- Add helpful comments
 COMMENT ON POLICY "Users can view demo properties" ON properties IS 'Allows all users to view demo/sample properties for testing';
 COMMENT ON POLICY "Users can view their own properties" ON properties IS 'Users can only view properties they own';
 COMMENT ON POLICY "Users can view demo financials" ON monthlyfinancials IS 'Allows all users to view demo/sample financial data';
+COMMENT ON POLICY "Users can view their own financials" ON monthlyfinancials IS 'Users can only view financials for properties they own';
+
+-- ============================================
+-- VERIFICATION
+-- ============================================
+
+-- Check RLS is enabled
+SELECT schemaname, tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+AND tablename IN ('properties', 'monthlyfinancials');
+
+-- List all policies
+SELECT schemaname, tablename, policyname, permissive, cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+AND tablename IN ('properties', 'monthlyfinancials')
+ORDER BY tablename, policyname;

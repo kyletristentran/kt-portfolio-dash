@@ -1,7 +1,7 @@
 -- Demo Data Seed Script
 -- This script populates the database with realistic demo data for testing and demonstration
 
--- Clear existing demo data (optional - run this if you want to reset demo data)
+-- Clear existing demo data (optional - uncomment if you want to reset demo data)
 -- DELETE FROM monthlyfinancials WHERE is_demo = TRUE;
 -- DELETE FROM properties WHERE is_demo = TRUE;
 
@@ -9,8 +9,12 @@
 -- DEMO PROPERTIES
 -- ============================================
 
+-- First, let's check if propertyid column has a default or needs explicit values
+-- We'll use RETURNING to capture the generated IDs
+
 -- Demo Property 1: Sunset Towers Apartments
 INSERT INTO properties (
+    propertyid,
     propertyname,
     address,
     city,
@@ -18,7 +22,9 @@ INSERT INTO properties (
     units,
     purchaseprice,
     is_demo
-) VALUES (
+)
+SELECT
+    COALESCE((SELECT MAX(propertyid) FROM properties), 0) + 1,
     'Sunset Towers Apartments',
     '123 Sunset Boulevard',
     'Los Angeles',
@@ -26,10 +32,14 @@ INSERT INTO properties (
     48,
     8500000,
     TRUE
-) ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM properties
+    WHERE propertyname = 'Sunset Towers Apartments' AND is_demo = TRUE
+);
 
--- Demo Property 2: Downtown Plaza
+-- Demo Property 2: Harbor View Residences
 INSERT INTO properties (
+    propertyid,
     propertyname,
     address,
     city,
@@ -37,18 +47,24 @@ INSERT INTO properties (
     units,
     purchaseprice,
     is_demo
-) VALUES (
-    'Downtown Plaza',
-    '456 Market Street',
-    'San Francisco',
+)
+SELECT
+    COALESCE((SELECT MAX(propertyid) FROM properties), 0) + 1,
+    'Harbor View Residences',
+    '456 Harbor Drive',
+    'San Diego',
     'CA',
     36,
-    12000000,
+    9200000,
     TRUE
-) ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM properties
+    WHERE propertyname = 'Harbor View Residences' AND is_demo = TRUE
+);
 
--- Demo Property 3: Tech Center Office Building
+-- Demo Property 3: Mountain Peak Lofts
 INSERT INTO properties (
+    propertyid,
     propertyname,
     address,
     city,
@@ -56,18 +72,24 @@ INSERT INTO properties (
     units,
     purchaseprice,
     is_demo
-) VALUES (
-    'Tech Center Office Building',
-    '789 Innovation Drive',
-    'San Jose',
-    'CA',
+)
+SELECT
+    COALESCE((SELECT MAX(propertyid) FROM properties), 0) + 1,
+    'Mountain Peak Lofts',
+    '789 Mountain View Boulevard',
+    'Denver',
+    'CO',
     24,
-    6500000,
+    5800000,
     TRUE
-) ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM properties
+    WHERE propertyname = 'Mountain Peak Lofts' AND is_demo = TRUE
+);
 
--- Demo Property 4: Riverside Lofts
+-- Demo Property 4: Riverside Commons
 INSERT INTO properties (
+    propertyid,
     propertyname,
     address,
     city,
@@ -75,18 +97,24 @@ INSERT INTO properties (
     units,
     purchaseprice,
     is_demo
-) VALUES (
-    'Riverside Lofts',
-    '321 River Road',
-    'Portland',
-    'OR',
-    32,
-    5200000,
+)
+SELECT
+    COALESCE((SELECT MAX(propertyid) FROM properties), 0) + 1,
+    'Riverside Commons',
+    '321 Riverside Parkway',
+    'Austin',
+    'TX',
+    60,
+    11500000,
     TRUE
-) ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM properties
+    WHERE propertyname = 'Riverside Commons' AND is_demo = TRUE
+);
 
--- Demo Property 5: Mountain View Residences
+-- Demo Property 5: Metro Heights Plaza
 INSERT INTO properties (
+    propertyid,
     propertyname,
     address,
     city,
@@ -94,22 +122,27 @@ INSERT INTO properties (
     units,
     purchaseprice,
     is_demo
-) VALUES (
-    'Mountain View Residences',
-    '555 Highland Avenue',
+)
+SELECT
+    COALESCE((SELECT MAX(propertyid) FROM properties), 0) + 1,
+    'Metro Heights Plaza',
+    '555 Downtown Avenue',
     'Seattle',
     'WA',
-    40,
-    7800000,
+    42,
+    10200000,
     TRUE
-) ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM properties
+    WHERE propertyname = 'Metro Heights Plaza' AND is_demo = TRUE
+);
 
 -- ============================================
 -- DEMO MONTHLY FINANCIALS
 -- ============================================
 
--- Function to generate demo financial data for a property
--- This creates 12 months of realistic financial data with some variance
+-- Function to generate demo financial data for each property
+-- This creates 12 months of realistic financial data with variance
 
 DO $$
 DECLARE
@@ -133,12 +166,13 @@ DECLARE
     debt_service NUMERIC;
     cash_flow NUMERIC;
     occupancy_rate NUMERIC;
+    next_financial_id INTEGER;
 BEGIN
     -- Loop through each demo property
     FOR prop IN SELECT propertyid, units, purchaseprice FROM properties WHERE is_demo = TRUE
     LOOP
-        -- Calculate base rent per unit (rough estimate: $1,500 - $3,500 per unit)
-        base_rent := prop.units * (1500 + (prop.purchaseprice / prop.units / 10000));
+        -- Calculate base rent per unit ($1,800 - $2,500 per unit per month)
+        base_rent := prop.units * (1800 + (RANDOM() * 700));
 
         -- Generate 12 months of data (Jan 2024 - Dec 2024)
         FOR i IN 1..12 LOOP
@@ -147,14 +181,14 @@ BEGIN
             -- Add random variance (±5%)
             variance := 0.95 + (RANDOM() * 0.10);
 
-            -- Calculate financials with some randomness
+            -- Calculate financials with realistic ratios
             gross_rent := ROUND(base_rent * variance);
             occupancy_rate := 92 + (RANDOM() * 6); -- 92-98% occupancy
             vacancy := ROUND(gross_rent * (1 - occupancy_rate / 100));
             other_income := ROUND(gross_rent * 0.03 * (0.8 + RANDOM() * 0.4)); -- 2.4-4.2% of rent
             total_income := gross_rent - vacancy + other_income;
 
-            -- Operating expenses (realistic ratios)
+            -- Operating expenses (realistic industry ratios)
             repairs := ROUND(total_income * 0.05 * (0.8 + RANDOM() * 0.4)); -- 4-6%
             utilities := ROUND(total_income * 0.06 * (0.8 + RANDOM() * 0.4)); -- 4.8-7.2%
             prop_mgmt := ROUND(total_income * 0.08); -- 8% (standard)
@@ -170,8 +204,12 @@ BEGIN
             debt_service := ROUND(prop.purchaseprice * 0.65 * 0.00568 * (0.95 + RANDOM() * 0.10)); -- Monthly payment
             cash_flow := noi - debt_service;
 
+            -- Get next available financial ID
+            SELECT COALESCE(MAX(financialid), 0) + 1 INTO next_financial_id FROM monthlyfinancials;
+
             -- Insert the financial record
             INSERT INTO monthlyfinancials (
+                financialid,
                 propertyid,
                 reportingmonth,
                 grossrent,
@@ -193,6 +231,7 @@ BEGIN
                 filepath,
                 is_demo
             ) VALUES (
+                next_financial_id,
                 prop.propertyid,
                 month_date,
                 gross_rent,
@@ -239,13 +278,15 @@ END $$;
 SELECT
     'Properties' as table_name,
     COUNT(*) as demo_count,
-    STRING_AGG(propertyname, ', ') as demo_items
+    STRING_AGG(propertyname, ', ' ORDER BY propertyname) as demo_items
 FROM properties
 WHERE is_demo = TRUE
+GROUP BY 1
 UNION ALL
 SELECT
     'Monthly Financials' as table_name,
     COUNT(*) as demo_count,
-    COUNT(DISTINCT propertyid) || ' properties × ' || COUNT(DISTINCT reportingmonth) || ' months' as demo_items
+    COUNT(DISTINCT propertyid)::TEXT || ' properties × ' || COUNT(DISTINCT reportingmonth)::TEXT || ' months' as demo_items
 FROM monthlyfinancials
-WHERE is_demo = TRUE;
+WHERE is_demo = TRUE
+GROUP BY 1;

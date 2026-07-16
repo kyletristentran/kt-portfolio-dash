@@ -236,7 +236,7 @@ export async function getPropertyList(): Promise<Property[]> {
 ### **STEP 7: Restart Your Development Server**
 
 ```bash
-cd /Users/kyletran/Python/KT-Portfolio-Dash/kt-port
+cd /Users/kyletran/Developer/kt-webportfolio/KT-Portfolio-Dash/kt-port
 npm run dev
 ```
 
