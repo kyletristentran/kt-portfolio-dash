@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KT Portfolio Dash — Schema Diagram</title>
+  <style>
+    body {
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      background: #0f1729;            /* navy, matching the dashboard theme */
+      color: #e8e6e1;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 { font-weight: 600; letter-spacing: 0.02em; }
+    h1 span { color: #c9a227; }       /* gold accent */
+    .diagram-card {
+      background: #f8f7f4;
+      border-left: 4px solid #c9a227;
+      border-radius: 8px;
+      padding: 1.5rem;
+      overflow-x: auto;               /* wide diagrams scroll inside the card */
+    }
+  </style>
+</head>
+<body>
+  <h1>KT Portfolio Dash — <span>Database Schema</span></h1>
+
+  <div class="diagram-card">
+    <!-- Mermaid reads this block and replaces it with the rendered SVG -->
+    <pre class="mermaid">
+erDiagram
+    properties {
+        bigint id PK "identity"
+        text name "NOT NULL"
+        text address
+        text city
+        text state
+        text zip_code
+        integer units
+        integer year_built
+        numeric purchase_price "NOT NULL, default 0"
+        uuid user_id FK "auth.users(id), NULL iff demo"
+        boolean is_demo "NOT NULL, default false"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    </pre>
+  </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+  </script>
+</body>
+</html>
