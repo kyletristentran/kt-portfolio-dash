@@ -16,7 +16,7 @@ export async function GET() {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Test connection
-    const { data, error } = await supabase.from('Properties').select('count').limit(1);
+    const { data, error } = await supabase.from('properties').select('count').limit(1);
 
     if (error) {
       return NextResponse.json({

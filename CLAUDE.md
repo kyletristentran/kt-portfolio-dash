@@ -41,7 +41,9 @@ Demo mode: a demo user (`demo@kyletran.dev`) sees seeded rows flagged `is_demo =
 
 Schema outline: **`kt-port/docs/DATABASE_SCHEMA.md`**. Migration/seed run order: **`kt-port/sql/README.md`**.
 
-- Two tables: `properties` and `monthlyfinancials` (FK `propertyid`, unique per `(propertyid, reportingmonth)`).
-- **All table/column names are lowercase** — the DDL was written PascalCase but Postgres folds unquoted identifiers, so queries must use `monthlyfinancials`, `totalincome`, `reportingmonth`, etc.
-- SQL is organized under `kt-port/sql/`: `schema/` (base DDL), `migrations/` (numbered; run `01_add_user_id_column.sql` before `02_enable_rls.sql`), `seeds/`, `scripts/` (diagnostics). Scripts are run manually in the Supabase SQL editor — there is no migration tooling.
-- The current RLS policies contain temporary `OR auth.uid() IS NULL` clauses that allow unauthenticated access; these are flagged for removal in production.
+- Dedicated Supabase project `kt-portfolio-dash` (ref `znugdwuwjwaytvgltcbz`, us-east-1).
+- Two tables, all **snake_case**: `properties` and `monthly_financials` (FK `property_id`, unique per `(property_id, reporting_month)`).
+- Demo isolation: demo rows have `is_demo = TRUE` and `user_id IS NULL` (CHECK-enforced); RLS makes them world-readable but writable by no client. Real rows are owner-only via `user_id = auth.uid()`. `monthly_financials.is_demo` is trigger-synced from the parent property.
+- KPIs come from the `get_portfolio_kpis(p_year)` RPC (SECURITY INVOKER, so RLS applies). `src/lib/database.ts` maps snake_case DB output to the PascalCase component-facing interfaces — keep that mapping boundary in `database.ts`.
+- Migrations in `kt-port/sql/migrations/` (numbered, run in order), demo seed in `sql/seeds/`. Applied via Supabase MCP `apply_migration` or the SQL editor — there is no CLI migration tooling.
+- The retired v1 schema (PascalCase-folded names, shared `KT-Investments` project, RLS backdoors) is archived in `legacy/sql-v1/` — do not resurrect it.
