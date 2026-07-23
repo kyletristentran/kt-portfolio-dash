@@ -106,7 +106,7 @@ USING (true);
 
 ### **STEP 3: Verify Data Exists**
 
-Run the test queries from `test-db-data.sql`:
+Run the test queries from `../sql/scripts/test-db-data.sql`:
 
 ```sql
 -- Check how many properties exist
