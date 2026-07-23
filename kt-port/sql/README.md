@@ -20,7 +20,7 @@ Adds `is_demo` boolean column to isolate demo data from production data.
 
 ### 3. Seed demo data
 ```bash
-# File: seed_demo_data.sql
+# File: seeds/seed_demo_data.sql
 ```
 Creates 5 sample properties with 12 months of financial data.
 
@@ -53,7 +53,7 @@ In Supabase Dashboard → Authentication → Users:
 
 ---
 
-### `seed_demo_data.sql`
+### `seeds/seed_demo_data.sql`
 **Purpose:** Generate realistic demo portfolio data
 
 **What it creates:**
@@ -253,6 +253,6 @@ ALTER TABLE properties DROP COLUMN IF EXISTS user_id;
 
 ## Support
 
-For detailed setup instructions, see [DEMO_SETUP.md](../DEMO_SETUP.md)
+For detailed setup instructions, see [DEMO_SETUP.md](../docs/DEMO_SETUP.md)
 
 For Supabase RLS documentation: https://supabase.com/docs/guides/auth/row-level-security
