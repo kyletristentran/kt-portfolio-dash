@@ -1,117 +1,106 @@
-# Database Schema
+# Database Schema (v2)
 
-Supabase (PostgreSQL) schema for the KT Portfolio Dashboard. Canonical DDL lives in
-[`sql/schema/reset-schema.sql`](../sql/schema/reset-schema.sql) plus the migrations in
-[`sql/migrations/`](../sql/migrations/) — this document is the human-readable outline.
-
-> **Casing note:** the DDL was written with PascalCase identifiers (`Properties`, `GrossRent`),
-> but PostgreSQL folds unquoted identifiers to lowercase. The **actual** table/column names are
-> all-lowercase (`properties`, `grossrent`), and that is what the app queries
-> (`.from('monthlyfinancials').select('totalincome, ...')`).
-> `sql/scripts/fix-table-case.sql` exists to create PascalCase views if ever needed.
+Schema for the dedicated Supabase project backing the KT Portfolio Dashboard.
+DDL lives in [`sql/migrations/`](../sql/migrations/) (run order in [`sql/README.md`](../sql/README.md)).
+The retired v1 schema (PascalCase-folded names, shared project) is archived under `legacy/sql-v1/`.
 
 ## Entity overview
 
 ```
 auth.users (Supabase Auth)
-    │ user_id (UUID, nullable)
+    │ user_id (UUID, NULL for demo rows)
     ▼
-properties 1 ──── * monthlyfinancials
-                    (propertyid FK, UNIQUE (propertyid, reportingmonth))
+properties 1 ──── * monthly_financials
+                    (property_id FK, UNIQUE (property_id, reporting_month))
 ```
 
 ## `properties`
 
-One row per property in the portfolio.
+One row per property.
 
-| Column          | Type            | Notes                                                        |
-|-----------------|-----------------|--------------------------------------------------------------|
-| `propertyid`    | `INT` **PK**    | Manually assigned (not serial)                               |
-| `propertyname`  | `VARCHAR(255)`  | NOT NULL                                                     |
-| `address`       | `VARCHAR(500)`  |                                                              |
-| `city`          | `VARCHAR(100)`  |                                                              |
-| `state`         | `VARCHAR(50)`   |                                                              |
-| `zipcode`       | `VARCHAR(20)`   |                                                              |
-| `units`         | `INT`           |                                                              |
-| `yearbuilt`     | `INT`           |                                                              |
-| `purchaseprice` | `DECIMAL(12,2)` | Added by `sql/migrations/add_purchase_price.sql`, default 0  |
-| `user_id`       | `UUID`          | FK → `auth.users(id)`; NULL for demo data. Added by `01_add_user_id_column.sql` |
-| `is_demo`       | `BOOLEAN`       | Demo-data isolation flag, default FALSE. Added by `add_demo_flags.sql` |
-| `dateadded`     | `TIMESTAMP`     | Default `CURRENT_TIMESTAMP`                                  |
+| Column           | Type            | Notes                                                       |
+|------------------|-----------------|-------------------------------------------------------------|
+| `id`             | `BIGINT` **PK** | identity (always generated)                                 |
+| `name`           | `TEXT`          | NOT NULL                                                    |
+| `address`        | `TEXT`          |                                                             |
+| `city`           | `TEXT`          |                                                             |
+| `state`          | `TEXT`          |                                                             |
+| `zip_code`       | `TEXT`          |                                                             |
+| `units`          | `INTEGER`       |                                                             |
+| `year_built`     | `INTEGER`       |                                                             |
+| `purchase_price` | `NUMERIC(14,2)` | NOT NULL, default 0                                         |
+| `user_id`        | `UUID`          | FK → `auth.users(id)` ON DELETE CASCADE; NULL iff demo      |
+| `is_demo`        | `BOOLEAN`       | NOT NULL, default FALSE                                     |
+| `created_at`     | `TIMESTAMPTZ`   | default `now()`                                             |
+| `updated_at`     | `TIMESTAMPTZ`   | maintained by trigger                                       |
 
-Indexes: `idx_properties_user_id (user_id)`, `idx_properties_is_demo (is_demo)`.
+CHECK `properties_owner_or_demo`: demo rows are ownerless, real rows must have an owner —
+`(is_demo AND user_id IS NULL) OR (NOT is_demo AND user_id IS NOT NULL)`.
 
-## `monthlyfinancials`
+Index: `idx_properties_user_id (user_id)`.
 
-One row per property per reporting month.
+## `monthly_financials`
 
-| Column               | Type            | Notes                                   |
-|----------------------|-----------------|-----------------------------------------|
-| `financialid`        | `SERIAL` **PK** |                                         |
-| `propertyid`         | `INT`           | FK → `properties(propertyid)`, NOT NULL |
-| `reportingmonth`     | `DATE`          | NOT NULL                                |
-| **Income**           |                 |                                         |
-| `grossrent`          | `DECIMAL(12,2)` | default 0                               |
-| `vacancy`            | `DECIMAL(12,2)` | dollar amount (loss), default 0         |
-| `otherincome`        | `DECIMAL(12,2)` | default 0                               |
-| `totalincome`        | `DECIMAL(12,2)` | default 0                               |
-| **Expenses**         |                 |                                         |
-| `repairsmaintenance` | `DECIMAL(12,2)` | default 0                               |
-| `utilities`          | `DECIMAL(12,2)` | default 0                               |
-| `propertymanagement` | `DECIMAL(12,2)` | default 0                               |
-| `propertytaxes`      | `DECIMAL(12,2)` | default 0                               |
-| `insurance`          | `DECIMAL(12,2)` | default 0                               |
-| `marketing`          | `DECIMAL(12,2)` | default 0                               |
-| `administrative`     | `DECIMAL(12,2)` | default 0                               |
-| `totalexpenses`      | `DECIMAL(12,2)` | default 0                               |
-| **Calculated**       |                 |                                         |
-| `noi`                | `DECIMAL(12,2)` | Net operating income, default 0         |
-| `debtservice`        | `DECIMAL(12,2)` | default 0                               |
-| `cashflow`           | `DECIMAL(12,2)` | default 0                               |
-| **Other**            |                 |                                         |
-| `occupancy`          | `DECIMAL(5,2)`  | percentage, default 0                   |
-| `is_demo`            | `BOOLEAN`       | default FALSE (`add_demo_flags.sql`)    |
-| `filepath`           | `VARCHAR(500)`  | source-file metadata                    |
-| `datecreated`        | `TIMESTAMP`     | default `CURRENT_TIMESTAMP`             |
-| `datemodified`       | `TIMESTAMP`     | default `CURRENT_TIMESTAMP`             |
+One row per property per month.
 
-Constraints: `UNIQUE (propertyid, reportingmonth)` — prevents duplicate months per property.
-Indexes: `(propertyid)`, `(reportingmonth)`, `idx_monthlyfinancials_is_demo (is_demo)`.
+| Column                | Type            | Notes                                             |
+|-----------------------|-----------------|---------------------------------------------------|
+| `id`                  | `BIGINT` **PK** | identity                                          |
+| `property_id`         | `BIGINT`        | FK → `properties(id)` ON DELETE CASCADE, NOT NULL |
+| `reporting_month`     | `DATE`          | NOT NULL, CHECK: first of month                   |
+| **Income**            |                 | all `NUMERIC(14,2)` NOT NULL default 0            |
+| `gross_rent`          |                 |                                                   |
+| `vacancy_loss`        |                 | dollar loss to vacancy                            |
+| `other_income`        |                 |                                                   |
+| `total_income`        |                 |                                                   |
+| **Expenses**          |                 | all `NUMERIC(14,2)` NOT NULL default 0            |
+| `repairs_maintenance` |                 |                                                   |
+| `utilities`           |                 |                                                   |
+| `property_management` |                 |                                                   |
+| `property_taxes`      |                 |                                                   |
+| `insurance`           |                 |                                                   |
+| `marketing`           |                 |                                                   |
+| `administrative`      |                 |                                                   |
+| `total_expenses`      |                 |                                                   |
+| **Results**           |                 |                                                   |
+| `noi`                 | `NUMERIC(14,2)` | net operating income                              |
+| `debt_service`        | `NUMERIC(14,2)` |                                                   |
+| `cash_flow`           | `NUMERIC(14,2)` |                                                   |
+| `occupancy_pct`       | `NUMERIC(5,2)`  | CHECK 0–100                                       |
+| `is_demo`             | `BOOLEAN`       | denormalized from parent property via trigger     |
+| `created_at`          | `TIMESTAMPTZ`   | default `now()`                                   |
+| `updated_at`          | `TIMESTAMPTZ`   | maintained by trigger                             |
 
-## Views
+Constraints: `UNIQUE (property_id, reporting_month)`; `reporting_month` must be the 1st of the month.
+Indexes: `(property_id)`, `(reporting_month)`.
 
-Created by `sql/migrations/add_demo_flags.sql`:
+## Triggers
 
-- `production_properties` / `production_monthlyfinancials` — rows where `is_demo = FALSE`
-- `demo_properties` / `demo_monthlyfinancials` — rows where `is_demo = TRUE`
+- `set_updated_at()` — refreshes `updated_at` on UPDATE (both tables)
+- `sync_financials_is_demo()` — copies `is_demo` from the parent property on INSERT / property change, so the flag can never drift
 
 ## Row Level Security
 
-Enabled on both tables by `sql/migrations/02_enable_rls.sql` (run `01_add_user_id_column.sql` first).
-10 policies total, same pattern on each table:
+Enabled on both tables from migration `002`. No unauthenticated escape hatches (unlike v1).
 
-- **View demo rows** — anyone can `SELECT` rows with `is_demo = TRUE`
-- **View own rows** — `SELECT` where `user_id = auth.uid()` (⚠️ currently also `OR auth.uid() IS NULL` — a temporary unauthenticated allowance to **remove in production**)
-- **Insert / Update / Delete own rows** — non-demo rows owned by `auth.uid()` only
+| Action | `properties`                              | `monthly_financials`                              |
+|--------|-------------------------------------------|---------------------------------------------------|
+| SELECT | `is_demo` OR `user_id = auth.uid()`       | `is_demo` OR parent property owned by caller      |
+| INSERT | own, non-demo rows only                   | only for own, non-demo properties                 |
+| UPDATE | own, non-demo rows only                   | only for own, non-demo properties                 |
+| DELETE | own, non-demo rows only                   | only for own, non-demo properties                 |
 
-Helper functions: `is_property_owner(prop_id)`, `get_accessible_properties()`.
+Demo rows are seeded by the `postgres` role (bypasses RLS as table owner); no client can create or modify them.
 
 ## RPC
 
-The app calls `get_portfolio_kpis(p_year)` via `supabase.rpc()` in `src/lib/database.ts` and
-falls back to client-side aggregation when the function doesn't exist. There is no DDL for it
-in this repo — if it exists, it was created directly in the Supabase SQL editor.
+`get_portfolio_kpis(p_year INTEGER)` — SECURITY INVOKER (RLS applies to the caller), returns one row:
+portfolio value, revenue/expenses/NOI, average occupancy, property count, prior-year revenue/NOI, and
+year-over-year variance percentages. Defined in `sql/migrations/003_kpi_function.sql`.
 
-## Migration order (fresh database)
+## Demo data
 
-1. `sql/schema/reset-schema.sql` — drop + recreate base tables (legacy permissive RLS included)
-2. `sql/migrations/add_purchase_price.sql` — `purchaseprice` column + backfill
-3. `sql/migrations/01_add_user_id_column.sql` — `user_id` column
-4. `sql/migrations/add_demo_flags.sql` — `is_demo` columns, indexes, views
-5. `sql/seeds/seed_demo_data.sql` — 5 demo properties × 12 months
-6. `sql/migrations/02_enable_rls.sql` — owner/demo RLS policies (replaces the legacy ones)
-7. Create the demo auth user (`demo@kyletran.dev`) — see [`sql/README.md`](../sql/README.md)
-
-Optional seeds for a realistic portfolio: `sql/seeds/sample-data-new-mexico.sql` (9 NM
-properties + financials) or `insert-properties-only.sql` + `insert-remaining-financials.sql`.
-Diagnostics live in `sql/scripts/`.
+`sql/seeds/001_demo_data.sql` — 5 demo properties (LA, SD, Denver, Austin, Seattle),
+24 months each (2024–2025, 120 rows) with ~38% expense ratio, ~94% occupancy, and a 4% 2025 rent bump
+so year-over-year variance KPIs are non-zero. Idempotent (deletes demo rows first).
+Demo login: `demo@kyletran.dev` (created manually in Supabase Auth).

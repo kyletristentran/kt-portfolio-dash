@@ -21,35 +21,17 @@ export function getSupabaseClient(): SupabaseClient {
   return supabase;
 }
 
-export async function testConnection(): Promise<{ success: boolean; message: string; tableCount?: number }> {
+export async function testConnection(): Promise<{ success: boolean; message: string }> {
   try {
     const client = getSupabaseClient();
 
-    // Query to count tables
-    const { data, error } = await client
-      .from('information_schema.tables')
-      .select('table_name', { count: 'exact' })
-      .eq('table_schema', 'public')
-      .eq('table_type', 'BASE TABLE');
+    const { error } = await client.from('properties').select('id').limit(1);
 
-    if (error) {
-      // Fallback: just test connection with a simple query
-      const { error: testError } = await client.from('properties').select('count').limit(1);
-
-      if (testError) {
-        throw testError;
-      }
-
-      return {
-        success: true,
-        message: 'Supabase connection successful'
-      };
-    }
+    if (error) throw error;
 
     return {
       success: true,
-      message: 'Supabase connection successful',
-      tableCount: data?.length || 0
+      message: 'Supabase connection successful'
     };
   } catch (error) {
     return {
@@ -78,75 +60,32 @@ export async function getPortfolioKPIs(year: number): Promise<DashboardKPIs> {
     const client = getSupabaseClient();
     console.log(`📊 Fetching portfolio KPIs for year: ${year}`);
 
-    // Get current year metrics
-    const { data: currentData, error: currentError } = await client.rpc('get_portfolio_kpis', {
+    const { data, error } = await client.rpc('get_portfolio_kpis', {
       p_year: year
     });
 
-    if (currentError) {
-      console.log('⚠️ RPC function not available, using manual calculation');
-      // Fallback to manual calculation if RPC doesn't exist
-      const startDate = `${year}-01-01`;
-      const endDate = `${year}-12-31`;
-
-      const { data: financials, error: finError } = await client
-        .from('monthlyfinancials')
-        .select('totalincome, totalexpenses, noi, vacancy, propertyid')
-        .gte('reportingmonth', startDate)
-        .lte('reportingmonth', endDate);
-
-      if (finError) {
-        console.error('❌ Error fetching financials for KPIs:', finError);
-        throw finError;
-      }
-      console.log(`✅ Fetched ${financials?.length || 0} financial records for ${year}`);
-
-      const { data: properties, error: propError } = await client
-        .from('properties')
-        .select('propertyid, purchaseprice');
-
-      if (propError) {
-        console.error('❌ Error fetching properties:', propError);
-        throw propError;
-      }
-      console.log(`✅ Fetched ${properties?.length || 0} properties`);
-
-      const { data: prevFinancials } = await client
-        .from('monthlyfinancials')
-        .select('totalincome, noi')
-        .gte('reportingmonth', `${year - 1}-01-01`)
-        .lte('reportingmonth', `${year - 1}-12-31`);
-
-      const total_revenue = financials?.reduce((sum, f) => sum + Number(f.totalincome || 0), 0) || 0;
-      const total_expenses = financials?.reduce((sum, f) => sum + Number(f.totalexpenses || 0), 0) || 0;
-      const total_noi = financials?.reduce((sum, f) => sum + Number(f.noi || 0), 0) || 0;
-      const avg_vacancy = financials?.length
-        ? Math.min(Math.max(financials.reduce((sum, f) => sum + Number(f.vacancy || 0), 0) / financials.length, 0), 100)
-        : 0;
-      const property_count = new Set(financials?.map(f => f.propertyid)).size;
-      const total_portfolio_value = properties?.reduce((sum, p) => sum + Number(p.purchaseprice || 0), 0) || 0;
-
-      const prev_revenue = prevFinancials?.reduce((sum, f) => sum + Number(f.totalincome || 0), 0) || 0;
-      const prev_noi = prevFinancials?.reduce((sum, f) => sum + Number(f.noi || 0), 0) || 0;
-
-      const noi_variance = prev_noi !== 0 ? ((total_noi - prev_noi) / prev_noi * 100) : 0;
-      const revenue_variance = prev_revenue !== 0 ? ((total_revenue - prev_revenue) / prev_revenue * 100) : 0;
-
-      return {
-        total_portfolio_value,
-        total_revenue,
-        total_expenses,
-        total_noi,
-        avg_vacancy,
-        property_count,
-        noi_variance,
-        revenue_variance,
-        prev_noi,
-        prev_revenue
-      };
+    if (error) {
+      console.error('❌ get_portfolio_kpis RPC failed:', error);
+      throw error;
     }
 
-    return currentData[0];
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
+      throw new Error('get_portfolio_kpis returned no data');
+    }
+
+    return {
+      total_portfolio_value: Number(row.total_portfolio_value || 0),
+      total_revenue: Number(row.total_revenue || 0),
+      total_expenses: Number(row.total_expenses || 0),
+      total_noi: Number(row.total_noi || 0),
+      avg_vacancy: Math.min(Math.max(100 - Number(row.avg_occupancy_pct || 0), 0), 100),
+      property_count: Number(row.property_count || 0),
+      noi_variance: Number(row.noi_variance_pct || 0),
+      revenue_variance: Number(row.revenue_variance_pct || 0),
+      prev_noi: Number(row.prev_noi || 0),
+      prev_revenue: Number(row.prev_revenue || 0)
+    };
   } catch (error) {
     console.error('Error fetching KPIs:', error);
     throw error;
@@ -168,48 +107,48 @@ export async function getMonthlyPerformance(year: number): Promise<MonthlyPerfor
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
 
-    const { data, error} = await client
-      .from('monthlyfinancials')
-      .select('reportingmonth, totalincome, totalexpenses, noi, cashflow, vacancy')
-      .gte('reportingmonth', startDate)
-      .lte('reportingmonth', endDate)
-      .order('reportingmonth');
+    const { data, error } = await client
+      .from('monthly_financials')
+      .select('reporting_month, total_income, total_expenses, noi, cash_flow, occupancy_pct')
+      .gte('reporting_month', startDate)
+      .lte('reporting_month', endDate)
+      .order('reporting_month');
 
     if (error) throw error;
 
     // Group by month and aggregate
-    const monthlyMap = new Map<string, MonthlyPerformance>();
+    const monthlyMap = new Map<string, { agg: MonthlyPerformance; count: number }>();
 
     data?.forEach(record => {
-      const monthKey = record.reportingmonth;
+      const monthKey = record.reporting_month;
       if (!monthlyMap.has(monthKey)) {
         monthlyMap.set(monthKey, {
-          ReportingMonth: new Date(record.reportingmonth),
-          Revenue: 0,
-          Expenses: 0,
-          NOI: 0,
-          CashFlow: 0,
-          Vacancy: 0
+          agg: {
+            ReportingMonth: new Date(record.reporting_month),
+            Revenue: 0,
+            Expenses: 0,
+            NOI: 0,
+            CashFlow: 0,
+            Vacancy: 0
+          },
+          count: 0
         });
       }
 
-      const monthData = monthlyMap.get(monthKey)!;
-      monthData.Revenue += Number(record.totalincome || 0);
-      monthData.Expenses += Number(record.totalexpenses || 0);
-      monthData.NOI += Number(record.noi || 0);
-      monthData.CashFlow += Number(record.cashflow || 0);
-      monthData.Vacancy += Number(record.vacancy || 0);
+      const entry = monthlyMap.get(monthKey)!;
+      entry.agg.Revenue += Number(record.total_income || 0);
+      entry.agg.Expenses += Number(record.total_expenses || 0);
+      entry.agg.NOI += Number(record.noi || 0);
+      entry.agg.CashFlow += Number(record.cash_flow || 0);
+      entry.agg.Vacancy += 100 - Number(record.occupancy_pct || 0);
+      entry.count += 1;
     });
 
-    const result = Array.from(monthlyMap.values());
-
-    // Calculate average vacancy
-    result.forEach(month => {
-      const count = data?.filter(d => d.reportingmonth === month.ReportingMonth.toISOString().split('T')[0]).length || 1;
-      month.Vacancy = Math.min(Math.max(month.Vacancy / count, 0), 100);
-    });
-
-    return result;
+    // Vacancy is the average vacancy percentage across properties for the month
+    return Array.from(monthlyMap.values()).map(({ agg, count }) => ({
+      ...agg,
+      Vacancy: Math.min(Math.max(count ? agg.Vacancy / count : 0, 0), 100)
+    }));
   } catch (error) {
     console.error('Error fetching monthly performance:', error);
     throw error;
@@ -240,7 +179,7 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
 
     const { data: properties, error: propError } = await client
       .from('properties')
-      .select('propertyid, propertyname, address, city, state, purchaseprice, units');
+      .select('id, name, address, city, state, purchase_price, units');
 
     if (propError) {
       console.error('❌ Error fetching properties:', propError);
@@ -248,10 +187,10 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
     }
 
     const { data: financials, error: finError } = await client
-      .from('monthlyfinancials')
-      .select('propertyid, totalincome, totalexpenses, noi, vacancy, occupancy, reportingmonth')
-      .gte('reportingmonth', startDate)
-      .lte('reportingmonth', endDate);
+      .from('monthly_financials')
+      .select('property_id, total_income, total_expenses, noi, occupancy_pct, reporting_month')
+      .gte('reporting_month', startDate)
+      .lte('reporting_month', endDate);
 
     if (finError) {
       console.error('❌ Error fetching financials:', finError);
@@ -259,30 +198,27 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
     }
 
     return properties.map((prop: any) => {
-      const propFinancials = financials?.filter((f: any) => f.propertyid === prop.propertyid) || [];
-      const totalRevenue = propFinancials.reduce((sum, f: any) => sum + Number(f.totalincome || 0), 0);
-      const totalExpenses = propFinancials.reduce((sum, f: any) => sum + Number(f.totalexpenses || 0), 0);
+      const propFinancials = financials?.filter((f: any) => f.property_id === prop.id) || [];
+      const totalRevenue = propFinancials.reduce((sum, f: any) => sum + Number(f.total_income || 0), 0);
+      const totalExpenses = propFinancials.reduce((sum, f: any) => sum + Number(f.total_expenses || 0), 0);
       const totalNOI = propFinancials.reduce((sum, f: any) => sum + Number(f.noi || 0), 0);
-      const avgVacancy = propFinancials.length
-        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.vacancy || 0), 0) / propFinancials.length, 0), 100)
-        : 0;
       const avgOccupancy = propFinancials.length
-        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.occupancy || 0), 0) / propFinancials.length, 0), 100)
+        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.occupancy_pct || 0), 0) / propFinancials.length, 0), 100)
         : 0;
-      const monthsReported = new Set(propFinancials.map((f: any) => f.reportingmonth)).size;
+      const monthsReported = new Set(propFinancials.map((f: any) => f.reporting_month)).size;
 
       return {
-        PropertyID: prop.propertyid,
-        PropertyName: prop.propertyname,
+        PropertyID: prop.id,
+        PropertyName: prop.name,
         Address: prop.address || 'N/A',
         City: prop.city || 'N/A',
         State: prop.state || 'N/A',
-        PurchasePrice: Number(prop.purchaseprice || 0),
+        PurchasePrice: Number(prop.purchase_price || 0),
         TotalUnits: prop.units,
         TotalRevenue: totalRevenue,
         TotalExpenses: totalExpenses,
         TotalNOI: totalNOI,
-        AvgVacancy: avgVacancy,
+        AvgVacancy: 100 - avgOccupancy,
         OccupancyRate: avgOccupancy,
         MonthsReported: monthsReported
       };
@@ -296,8 +232,6 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
 export interface Property {
   PropertyID: number;
   PropertyName: string;
-  propertyid?: number;
-  propertyname?: string;
 }
 
 export async function getPropertyList(): Promise<Property[]> {
@@ -307,22 +241,18 @@ export async function getPropertyList(): Promise<Property[]> {
 
     const { data, error } = await client
       .from('properties')
-      .select('propertyid, propertyname')
-      .order('propertyname');
+      .select('id, name')
+      .order('name');
 
     if (error) {
       console.error('❌ Error fetching property list:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
       throw error;
     }
 
     console.log('✅ Property list fetched:', data?.length || 0, 'properties');
-    // Map lowercase column names to PascalCase for backward compatibility
     return (data || []).map((prop: any) => ({
-      PropertyID: prop.propertyid,
-      PropertyName: prop.propertyname
+      PropertyID: prop.id,
+      PropertyName: prop.name
     }));
   } catch (error) {
     console.error('❌ Exception in getPropertyList:', error);
@@ -359,52 +289,34 @@ export async function importMonthlyFinancials(
     const client = getSupabaseClient();
     const monthStr = reportingMonth.toISOString().split('T')[0];
 
-    // Check if record exists
-    const { data: existing, error: checkError } = await client
-      .from('monthlyfinancials')
-      .select('FinancialID')
-      .eq('PropertyID', propertyId)
-      .eq('ReportingMonth', monthStr)
-      .single();
-
     const financialData = {
-      PropertyID: propertyId,
-      ReportingMonth: monthStr,
-      GrossRent: data.GrossRent,
-      Vacancy: data.Vacancy,
-      OtherIncome: data.OtherIncome,
-      TotalIncome: data.TotalIncome,
-      RepairsMaintenance: data.RepairsMaintenance,
-      Utilities: data.Utilities,
-      PropertyManagement: data.PropertyManagement,
-      PropertyTaxes: data.PropertyTaxes,
-      Insurance: data.Insurance,
-      Marketing: data.Marketing,
-      Administrative: data.Administrative,
-      TotalExpenses: data.TotalExpenses,
-      NOI: data.NOI,
-      DebtService: data.DebtService,
-      CashFlow: data.CashFlow,
-      Occupancy: data.Occupancy,
-      FilePath: data.FilePath || 'Next.js Import'
+      property_id: propertyId,
+      reporting_month: monthStr,
+      gross_rent: data.GrossRent,
+      vacancy_loss: data.Vacancy,
+      other_income: data.OtherIncome,
+      total_income: data.TotalIncome,
+      repairs_maintenance: data.RepairsMaintenance,
+      utilities: data.Utilities,
+      property_management: data.PropertyManagement,
+      property_taxes: data.PropertyTaxes,
+      insurance: data.Insurance,
+      marketing: data.Marketing,
+      administrative: data.Administrative,
+      total_expenses: data.TotalExpenses,
+      noi: data.NOI,
+      debt_service: data.DebtService,
+      cash_flow: data.CashFlow,
+      occupancy_pct: data.Occupancy,
+      source_file: data.FilePath || 'Next.js Import'
     };
 
-    if (existing && !checkError) {
-      // Update existing record
-      const { error: updateError } = await client
-        .from('monthlyfinancials')
-        .update(financialData)
-        .eq('FinancialID', existing.FinancialID);
+    // UNIQUE (property_id, reporting_month) makes upsert safe
+    const { error } = await client
+      .from('monthly_financials')
+      .upsert(financialData, { onConflict: 'property_id,reporting_month' });
 
-      if (updateError) throw updateError;
-    } else {
-      // Insert new record
-      const { error: insertError } = await client
-        .from('monthlyfinancials')
-        .insert(financialData);
-
-      if (insertError) throw insertError;
-    }
+    if (error) throw error;
 
     return true;
   } catch (error) {
@@ -442,42 +354,42 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
     const client = getSupabaseClient();
 
     let query = client
-      .from('monthlyfinancials')
+      .from('monthly_financials')
       .select(`
-        FinancialID,
-        PropertyID,
-        ReportingMonth,
-        GrossRent,
-        Vacancy,
-        OtherIncome,
-        TotalIncome,
-        RepairsMaintenance,
-        Utilities,
-        PropertyManagement,
-        PropertyTaxes,
-        Insurance,
-        Marketing,
-        Administrative,
-        TotalExpenses,
-        NOI,
-        DebtService,
-        CashFlow,
-        Occupancy,
-        FilePath,
-        Properties (
-          PropertyName
+        id,
+        property_id,
+        reporting_month,
+        gross_rent,
+        vacancy_loss,
+        other_income,
+        total_income,
+        repairs_maintenance,
+        utilities,
+        property_management,
+        property_taxes,
+        insurance,
+        marketing,
+        administrative,
+        total_expenses,
+        noi,
+        debt_service,
+        cash_flow,
+        occupancy_pct,
+        source_file,
+        properties (
+          name
         )
       `)
-      .order('ReportingMonth', { ascending: false });
+      .order('reporting_month', { ascending: false });
 
     if (year) {
       const startDate = `${year}-01-01`;
       const endDate = `${year}-12-31`;
-      query = query.gte('ReportingMonth', startDate).lte('ReportingMonth', endDate);
+      query = query.gte('reporting_month', startDate).lte('reporting_month', endDate);
     }
 
     if (propertyId) {
-      query = query.eq('PropertyID', propertyId);
+      query = query.eq('property_id', propertyId);
     }
 
     const { data, error } = await query;
@@ -485,27 +397,27 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
     if (error) throw error;
 
     return data.map((record: any) => ({
-      FinancialID: record.FinancialID,
-      PropertyID: record.PropertyID,
-      PropertyName: record.Properties?.PropertyName || '',
-      ReportingMonth: new Date(record.ReportingMonth),
-      GrossRent: Number(record.GrossRent),
-      Vacancy: Number(record.Vacancy),
-      OtherIncome: Number(record.OtherIncome),
-      TotalIncome: Number(record.TotalIncome),
-      RepairsMaintenance: Number(record.RepairsMaintenance),
-      Utilities: Number(record.Utilities),
-      PropertyManagement: Number(record.PropertyManagement),
-      PropertyTaxes: Number(record.PropertyTaxes),
-      Insurance: Number(record.Insurance),
-      Marketing: Number(record.Marketing),
-      Administrative: Number(record.Administrative),
-      TotalExpenses: Number(record.TotalExpenses),
-      NOI: Number(record.NOI),
-      DebtService: Number(record.DebtService),
-      CashFlow: Number(record.CashFlow),
-      Occupancy: Number(record.Occupancy),
-      FilePath: record.FilePath || ''
+      FinancialID: record.id,
+      PropertyID: record.property_id,
+      PropertyName: record.properties?.name || '',
+      ReportingMonth: new Date(record.reporting_month),
+      GrossRent: Number(record.gross_rent),
+      Vacancy: Number(record.vacancy_loss),
+      OtherIncome: Number(record.other_income),
+      TotalIncome: Number(record.total_income),
+      RepairsMaintenance: Number(record.repairs_maintenance),
+      Utilities: Number(record.utilities),
+      PropertyManagement: Number(record.property_management),
+      PropertyTaxes: Number(record.property_taxes),
+      Insurance: Number(record.insurance),
+      Marketing: Number(record.marketing),
+      Administrative: Number(record.administrative),
+      TotalExpenses: Number(record.total_expenses),
+      NOI: Number(record.noi),
+      DebtService: Number(record.debt_service),
+      CashFlow: Number(record.cash_flow),
+      Occupancy: Number(record.occupancy_pct),
+      FilePath: record.source_file || ''
     }));
   } catch (error) {
     console.error('Error fetching monthly financial records:', error);
@@ -518,9 +430,9 @@ export async function deleteMonthlyFinancialRecord(financialId: number): Promise
     const client = getSupabaseClient();
 
     const { error } = await client
-      .from('monthlyfinancials')
+      .from('monthly_financials')
       .delete()
-      .eq('FinancialID', financialId);
+      .eq('id', financialId);
 
     if (error) throw error;
 
