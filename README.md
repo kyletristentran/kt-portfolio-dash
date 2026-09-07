@@ -6,6 +6,7 @@ owner sees only their own assets and a public demo that shows the product withou
 an account.
 
 **Live:** [kt-port.vercel.app](https://kt-port.vercel.app) — use the demo login.
+The demo tenant is synthetic data seeded from `kt-port/sql/seeds/`; it is not a real portfolio.
 
 ## What it does
 

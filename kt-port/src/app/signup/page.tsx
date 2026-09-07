@@ -46,7 +46,7 @@ export default function SignUpPage() {
           router.push('/login');
         }, 2000);
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);

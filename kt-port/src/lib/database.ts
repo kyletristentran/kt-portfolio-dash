@@ -41,6 +41,51 @@ export async function testConnection(): Promise<{ success: boolean; message: str
   }
 }
 
+// Row shapes as returned by Supabase for the columns each query selects.
+// Column names mirror sql/migrations/001_initial_schema.sql.
+interface PropertyRow {
+  id: number;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  purchase_price: number | string | null;
+  units: number | null;
+}
+
+interface PropertyFinancialSummaryRow {
+  property_id: number;
+  total_income: number | string | null;
+  total_expenses: number | string | null;
+  noi: number | string | null;
+  occupancy_pct: number | string | null;
+  reporting_month: string;
+}
+
+interface MonthlyFinancialRow {
+  id: number;
+  property_id: number;
+  reporting_month: string;
+  gross_rent: number | string;
+  vacancy_loss: number | string;
+  other_income: number | string;
+  total_income: number | string;
+  repairs_maintenance: number | string;
+  utilities: number | string;
+  property_management: number | string;
+  property_taxes: number | string;
+  insurance: number | string;
+  marketing: number | string;
+  administrative: number | string;
+  total_expenses: number | string;
+  noi: number | string;
+  debt_service: number | string;
+  cash_flow: number | string;
+  occupancy_pct: number | string;
+  source_file: string | null;
+  properties: { name: string } | null;
+}
+
 // Dashboard Data Queries
 export interface DashboardKPIs {
   total_portfolio_value: number;
@@ -197,15 +242,18 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
       throw finError;
     }
 
-    return properties.map((prop: any) => {
-      const propFinancials = financials?.filter((f: any) => f.property_id === prop.id) || [];
-      const totalRevenue = propFinancials.reduce((sum, f: any) => sum + Number(f.total_income || 0), 0);
-      const totalExpenses = propFinancials.reduce((sum, f: any) => sum + Number(f.total_expenses || 0), 0);
-      const totalNOI = propFinancials.reduce((sum, f: any) => sum + Number(f.noi || 0), 0);
+    const propertyRows = (properties || []) as PropertyRow[];
+    const financialRows = (financials || []) as PropertyFinancialSummaryRow[];
+
+    return propertyRows.map((prop) => {
+      const propFinancials = financialRows.filter((f) => f.property_id === prop.id);
+      const totalRevenue = propFinancials.reduce((sum, f) => sum + Number(f.total_income || 0), 0);
+      const totalExpenses = propFinancials.reduce((sum, f) => sum + Number(f.total_expenses || 0), 0);
+      const totalNOI = propFinancials.reduce((sum, f) => sum + Number(f.noi || 0), 0);
       const avgOccupancy = propFinancials.length
-        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.occupancy_pct || 0), 0) / propFinancials.length, 0), 100)
+        ? Math.min(Math.max(propFinancials.reduce((sum, f) => sum + Number(f.occupancy_pct || 0), 0) / propFinancials.length, 0), 100)
         : 0;
-      const monthsReported = new Set(propFinancials.map((f: any) => f.reporting_month)).size;
+      const monthsReported = new Set(propFinancials.map((f) => f.reporting_month)).size;
 
       return {
         PropertyID: prop.id,
@@ -214,7 +262,7 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
         City: prop.city || 'N/A',
         State: prop.state || 'N/A',
         PurchasePrice: Number(prop.purchase_price || 0),
-        TotalUnits: prop.units,
+        TotalUnits: prop.units ?? 0,
         TotalRevenue: totalRevenue,
         TotalExpenses: totalExpenses,
         TotalNOI: totalNOI,
@@ -250,7 +298,7 @@ export async function getPropertyList(): Promise<Property[]> {
     }
 
     console.log('✅ Property list fetched:', data?.length || 0, 'properties');
-    return (data || []).map((prop: any) => ({
+    return ((data || []) as Pick<PropertyRow, 'id' | 'name'>[]).map((prop) => ({
       PropertyID: prop.id,
       PropertyName: prop.name
     }));
@@ -396,7 +444,7 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
 
     if (error) throw error;
 
-    return data.map((record: any) => ({
+    return ((data || []) as unknown as MonthlyFinancialRow[]).map((record) => ({
       FinancialID: record.id,
       PropertyID: record.property_id,
       PropertyName: record.properties?.name || '',

@@ -7,7 +7,6 @@ import PerformanceOverview from './PerformanceOverview';
 import PortfolioAnalysis from './PortfolioAnalysis';
 import FinancialTrends from './FinancialTrends';
 import PropertyDetails from './PropertyDetails';
-import DataManagement from './DataManagement';
 import MonthlyFinancials from './MonthlyFinancials';
 
 export default function Dashboard() {

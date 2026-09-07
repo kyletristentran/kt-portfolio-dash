@@ -4,7 +4,7 @@ import "./globals.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 export const metadata: Metadata = {
-  title: "Kyle's REIT - Real Estate Investment Dashboard",
+  title: "kt-portfolio-dash - Real Estate Portfolio Dashboard",
   description: "Professional real estate investment trust dashboard for portfolio analysis",
 };
 
