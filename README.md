@@ -1,5 +1,7 @@
 # kt-portfolio-dash
 
+[![CI](https://github.com/kyletristentran/kt-portfolio-dash/actions/workflows/ci.yml/badge.svg)](https://github.com/kyletristentran/kt-portfolio-dash/actions/workflows/ci.yml)
+
 A real estate portfolio dashboard — property-level financials in, portfolio KPIs
 and trend analysis out. Next.js and Supabase, with row-level security so each
 owner sees only their own assets and a public demo that shows the product without
@@ -84,8 +86,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 Apply `sql/migrations/` in numbered order, then `sql/seeds/` for demo data.
 Schema notes in `kt-port/docs/DATABASE_SCHEMA.md`.
 
-`npm run build` is the type-check — there is no separate typecheck script and no
-test suite.
+CI runs `tsc --noEmit`, `next lint` and `next build` on every push and pull
+request (`.github/workflows/ci.yml`). There is no test suite.
 
 ## Repo layout
 
