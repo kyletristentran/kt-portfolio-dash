@@ -175,33 +175,18 @@ The demo user account must be created in Supabase Auth.
    - **Auto Confirm User:** ✅ Check this box
 4. Click "Create user"
 
-### Option B: Using Supabase Admin API
+### Option B: Using the public signup endpoint (no admin key needed)
 
-If you prefer to use the API, you can create the user via the Admin API:
+This uses the project's **anon** key, which is safe to keep on a workstation. It requires "Confirm email" to be disabled under Authentication → Providers → Email; otherwise confirm the user afterwards in the dashboard.
 
 ```bash
-curl -X POST 'https://your-project.supabase.co/auth/v1/admin/users' \
-  -H "apikey: YOUR_SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY" \
+curl -X POST 'https://your-project.supabase.co/auth/v1/signup' \
+  -H "apikey: YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "demo@kyletran.dev",
-    "password": "demo123",
-    "email_confirm": true,
-    "user_metadata": {
-      "name": "Demo User",
-      "is_demo": true
-    }
-  }'
+  -d '{"email":"demo@kyletran.dev","password":"demo123","data":{"name":"Demo User","is_demo":true}}'
 ```
 
-**⚠️ Security Note:** The service role key should NEVER be exposed in client-side code. Only use it in secure server environments.
-
-### Option C: Using Supabase CLI
-
-```bash
-supabase auth signup --email demo@kyletran.dev --password demo123
-```
+**Security note:** The service-role key is never required for this project. It is not read by any application code, and it must not be set in Vercel or committed anywhere.
 
 **Verification:**
 1. Go to Supabase Dashboard → Authentication → Users
