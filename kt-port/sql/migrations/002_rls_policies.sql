@@ -1,4 +1,4 @@
--- v2 RLS — enabled from day one, no unauthenticated backdoors.
+-- v2 RLS: enabled from day one, no unauthenticated backdoors.
 -- Everyone (including anon) can READ demo rows; only owners touch real rows.
 
 ALTER TABLE properties ENABLE ROW LEVEL SECURITY;

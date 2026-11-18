@@ -167,7 +167,7 @@ export default function MonthlyFinancials() {
 
   return (
     <div className="content-card">
-      <h4 className="mb-4">💰 Monthly Financials Management</h4>
+      <h4 className="mb-4">Monthly Financials Management</h4>
       
       {/* Sub-tabs */}
       <ul className="nav nav-pills mb-4">
@@ -176,7 +176,7 @@ export default function MonthlyFinancials() {
             className={`nav-link ${activeTab === 'manual' ? 'active' : ''}`}
             onClick={() => setActiveTab('manual')}
           >
-            📝 Manual Entry
+            Manual Entry
           </button>
         </li>
         <li className="nav-item">
@@ -184,7 +184,7 @@ export default function MonthlyFinancials() {
             className={`nav-link ${activeTab === 'csv' ? 'active' : ''}`}
             onClick={() => setActiveTab('csv')}
           >
-            📁 CSV Import
+            CSV Import
           </button>
         </li>
         <li className="nav-item">
@@ -192,7 +192,7 @@ export default function MonthlyFinancials() {
             className={`nav-link ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
-            📊 Financial History
+            Financial History
           </button>
         </li>
       </ul>
@@ -246,7 +246,7 @@ export default function MonthlyFinancials() {
             </div>
 
             {/* Income Section */}
-            <h5 className="mb-3">💰 Income</h5>
+            <h5 className="mb-3">Income</h5>
             <div className="row g-3 mb-4">
               <div className="col-md-4">
                 <label className="form-label">Gross Rent ($)</label>
@@ -284,7 +284,7 @@ export default function MonthlyFinancials() {
             </div>
 
             {/* Expenses Section */}
-            <h5 className="mb-3">💸 Expenses</h5>
+            <h5 className="mb-3">Expenses</h5>
             <div className="row g-3 mb-4">
               <div className="col-md-4">
                 <label className="form-label">Repairs & Maintenance ($)</label>
@@ -389,7 +389,7 @@ export default function MonthlyFinancials() {
             </div>
 
             {/* Calculated Metrics */}
-            <h5 className="mb-3">📊 Calculated Metrics</h5>
+            <h5 className="mb-3">Calculated Metrics</h5>
             <div className="row g-3 mb-4">
               <div className="col-md-3">
                 <div className="alert alert-info">
@@ -609,7 +609,7 @@ function CSVImportTab({ onImportSuccess, onImportError }: CSVImportTabProps) {
       <h5 className="mb-3">CSV File Import</h5>
       
       <div className="alert alert-info">
-        <h6>📋 CSV Template Format</h6>
+        <h6>CSV Template Format</h6>
         <p>Your CSV should include the following columns in order:</p>
         <small className="text-muted">
           PropertyID, ReportingMonth (YYYY-MM), GrossRent, Vacancy, OtherIncome, RepairsMaintenance, 

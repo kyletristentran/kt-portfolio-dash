@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import DemoLoginButton from '@/components/auth/DemoLoginButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -104,14 +105,15 @@ export default function LoginPage() {
 
         {showDemo && (
           <div className="alert alert-info mt-3">
-            <h6 className="alert-heading">🎯 For Recruiters & Demo Access:</h6>
-            <div className="mb-2">
-              <strong>Email:</strong> kylettra@usc.edu<br/>
-              <strong>Password:</strong> usc1234
-            </div>
-            <small className="text-muted">
-              💡 <em>Click Login to access the dashboard</em>
-            </small>
+            <h6 className="alert-heading">Demo access</h6>
+            <p className="mb-2">The demo account is read-only and shows sample properties.</p>
+            <DemoLoginButton
+              onSuccess={() => {
+                router.push('/');
+                router.refresh();
+              }}
+              onError={setError}
+            />
           </div>
         )}
       </div>

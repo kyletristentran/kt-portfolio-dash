@@ -1,44 +1,21 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Create Supabase client
 let supabase: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient {
   if (!supabase) {
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('❌ Supabase credentials missing!');
+      console.error('Supabase credentials missing!');
       console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing');
       console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing');
       throw new Error('Supabase credentials not configured');
     }
     supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Connected to Supabase:', supabaseUrl);
   }
   return supabase;
-}
-
-export async function testConnection(): Promise<{ success: boolean; message: string }> {
-  try {
-    const client = getSupabaseClient();
-
-    const { error } = await client.from('properties').select('id').limit(1);
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      message: 'Supabase connection successful'
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Unknown database error'
-    };
-  }
 }
 
 // Dashboard Data Queries
@@ -58,14 +35,13 @@ export interface DashboardKPIs {
 export async function getPortfolioKPIs(year: number): Promise<DashboardKPIs> {
   try {
     const client = getSupabaseClient();
-    console.log(`📊 Fetching portfolio KPIs for year: ${year}`);
 
     const { data, error } = await client.rpc('get_portfolio_kpis', {
       p_year: year
     });
 
     if (error) {
-      console.error('❌ get_portfolio_kpis RPC failed:', error);
+      console.error('get_portfolio_kpis RPC failed:', error);
       throw error;
     }
 
@@ -182,7 +158,7 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
       .select('id, name, address, city, state, purchase_price, units');
 
     if (propError) {
-      console.error('❌ Error fetching properties:', propError);
+      console.error('Error fetching properties:', propError);
       throw propError;
     }
 
@@ -193,19 +169,19 @@ export async function getPropertyDetails(year: number): Promise<PropertyDetail[]
       .lte('reporting_month', endDate);
 
     if (finError) {
-      console.error('❌ Error fetching financials:', finError);
+      console.error('Error fetching financials:', finError);
       throw finError;
     }
 
-    return properties.map((prop: any) => {
-      const propFinancials = financials?.filter((f: any) => f.property_id === prop.id) || [];
-      const totalRevenue = propFinancials.reduce((sum, f: any) => sum + Number(f.total_income || 0), 0);
-      const totalExpenses = propFinancials.reduce((sum, f: any) => sum + Number(f.total_expenses || 0), 0);
-      const totalNOI = propFinancials.reduce((sum, f: any) => sum + Number(f.noi || 0), 0);
+    return properties.map((prop) => {
+      const propFinancials = financials?.filter((f) => f.property_id === prop.id) || [];
+      const totalRevenue = propFinancials.reduce((sum, f) => sum + Number(f.total_income || 0), 0);
+      const totalExpenses = propFinancials.reduce((sum, f) => sum + Number(f.total_expenses || 0), 0);
+      const totalNOI = propFinancials.reduce((sum, f) => sum + Number(f.noi || 0), 0);
       const avgOccupancy = propFinancials.length
-        ? Math.min(Math.max(propFinancials.reduce((sum, f: any) => sum + Number(f.occupancy_pct || 0), 0) / propFinancials.length, 0), 100)
+        ? Math.min(Math.max(propFinancials.reduce((sum, f) => sum + Number(f.occupancy_pct || 0), 0) / propFinancials.length, 0), 100)
         : 0;
-      const monthsReported = new Set(propFinancials.map((f: any) => f.reporting_month)).size;
+      const monthsReported = new Set(propFinancials.map((f) => f.reporting_month)).size;
 
       return {
         PropertyID: prop.id,
@@ -237,7 +213,6 @@ export interface Property {
 export async function getPropertyList(): Promise<Property[]> {
   try {
     const client = getSupabaseClient();
-    console.log('📋 Fetching property list from Supabase...');
 
     const { data, error } = await client
       .from('properties')
@@ -245,17 +220,16 @@ export async function getPropertyList(): Promise<Property[]> {
       .order('name');
 
     if (error) {
-      console.error('❌ Error fetching property list:', error);
+      console.error('Error fetching property list:', error);
       throw error;
     }
 
-    console.log('✅ Property list fetched:', data?.length || 0, 'properties');
-    return (data || []).map((prop: any) => ({
+    return (data || []).map((prop) => ({
       PropertyID: prop.id,
       PropertyName: prop.name
     }));
   } catch (error) {
-    console.error('❌ Exception in getPropertyList:', error);
+    console.error('Exception in getPropertyList:', error);
     throw error;
   }
 }
@@ -396,10 +370,10 @@ export async function getMonthlyFinancialRecords(year?: number, propertyId?: num
 
     if (error) throw error;
 
-    return data.map((record: any) => ({
+    return data.map((record) => ({
       FinancialID: record.id,
       PropertyID: record.property_id,
-      PropertyName: record.properties?.name || '',
+      PropertyName: (Array.isArray(record.properties) ? record.properties[0]?.name : (record.properties as { name: string } | null)?.name) || '',
       ReportingMonth: new Date(record.reporting_month),
       GrossRent: Number(record.gross_rent),
       Vacancy: Number(record.vacancy_loss),

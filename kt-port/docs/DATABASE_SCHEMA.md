@@ -1,8 +1,7 @@
 # Database Schema (v2)
 
 Schema for the dedicated Supabase project backing the KT Portfolio Dashboard.
-DDL lives in [`sql/migrations/`](../sql/migrations/) (run order in [`sql/README.md`](../sql/README.md)).
-The retired v1 schema (PascalCase-folded names, shared project) is archived under `legacy/sql-v1/`.
+The DDL is in [`sql/migrations/`](../sql/migrations/), and [`sql/README.md`](../sql/README.md) gives the run order.
 
 ## Entity overview
 
@@ -34,7 +33,7 @@ One row per property.
 | `created_at`     | `TIMESTAMPTZ`   | default `now()`                                             |
 | `updated_at`     | `TIMESTAMPTZ`   | maintained by trigger                                       |
 
-CHECK `properties_owner_or_demo`: demo rows are ownerless, real rows must have an owner —
+CHECK `properties_owner_or_demo`: demo rows have no owner and real rows must have one:
 `(is_demo AND user_id IS NULL) OR (NOT is_demo AND user_id IS NOT NULL)`.
 
 Index: `idx_properties_user_id (user_id)`.
@@ -66,7 +65,8 @@ One row per property per month.
 | `noi`                 | `NUMERIC(14,2)` | net operating income                              |
 | `debt_service`        | `NUMERIC(14,2)` |                                                   |
 | `cash_flow`           | `NUMERIC(14,2)` |                                                   |
-| `occupancy_pct`       | `NUMERIC(5,2)`  | CHECK 0–100                                       |
+| `occupancy_pct`       | `NUMERIC(5,2)`  | CHECK 0 to 100                                    |
+| `source_file`         | `TEXT`          | import metadata                                   |
 | `is_demo`             | `BOOLEAN`       | denormalized from parent property via trigger     |
 | `created_at`          | `TIMESTAMPTZ`   | default `now()`                                   |
 | `updated_at`          | `TIMESTAMPTZ`   | maintained by trigger                             |
@@ -76,12 +76,12 @@ Indexes: `(property_id)`, `(reporting_month)`.
 
 ## Triggers
 
-- `set_updated_at()` — refreshes `updated_at` on UPDATE (both tables)
-- `sync_financials_is_demo()` — copies `is_demo` from the parent property on INSERT / property change, so the flag can never drift
+- `set_updated_at()` refreshes `updated_at` on UPDATE (both tables).
+- `sync_financials_is_demo()` copies `is_demo` from the parent property on INSERT and when the property changes, so the two flags stay equal.
 
 ## Row Level Security
 
-Enabled on both tables from migration `002`. No unauthenticated escape hatches (unlike v1).
+Row-level security is enabled on both tables from migration `002`. No policy grants access to unauthenticated callers beyond the demo rows.
 
 | Action | `properties`                              | `monthly_financials`                              |
 |--------|-------------------------------------------|---------------------------------------------------|
@@ -90,17 +90,16 @@ Enabled on both tables from migration `002`. No unauthenticated escape hatches (
 | UPDATE | own, non-demo rows only                   | only for own, non-demo properties                 |
 | DELETE | own, non-demo rows only                   | only for own, non-demo properties                 |
 
-Demo rows are seeded by the `postgres` role (bypasses RLS as table owner); no client can create or modify them.
+Demo rows are seeded by the `postgres` role, which bypasses RLS as the table owner. No client can create or modify them.
 
 ## RPC
 
-`get_portfolio_kpis(p_year INTEGER)` — SECURITY INVOKER (RLS applies to the caller), returns one row:
+`get_portfolio_kpis(p_year INTEGER)` runs as SECURITY INVOKER, so RLS applies to the caller. It returns one row:
 portfolio value, revenue/expenses/NOI, average occupancy, property count, prior-year revenue/NOI, and
 year-over-year variance percentages. Defined in `sql/migrations/003_kpi_function.sql`.
 
 ## Demo data
 
-`sql/seeds/001_demo_data.sql` — 5 demo properties (LA, SD, Denver, Austin, Seattle),
-24 months each (2024–2025, 120 rows) with ~38% expense ratio, ~94% occupancy, and a 4% 2025 rent bump
-so year-over-year variance KPIs are non-zero. Idempotent (deletes demo rows first).
-Demo login: `demo@kyletran.dev` (created manually in Supabase Auth).
+`sql/seeds/001_demo_data.sql` creates 5 demo properties (Los Angeles, San Diego, Denver, Austin and Seattle) with 24 months each, covering 2024 and 2025 (120 rows). The data uses an expense ratio of about 38%, occupancy of about 94% and a 4% rent increase in 2025, so the year-over-year variance KPIs are non-zero. The seed is idempotent and deletes existing demo rows first.
+
+The demo login is `demo@kyletran.dev`, created manually in Supabase Auth.

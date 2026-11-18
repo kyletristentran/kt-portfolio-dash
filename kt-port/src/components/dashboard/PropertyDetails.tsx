@@ -104,7 +104,6 @@ export default function PropertyDetails() {
   }
 
   const totalUnits = properties.reduce((sum, p) => sum + p.TotalUnits, 0);
-  const totalRevenue = properties.reduce((sum, p) => sum + p.TotalRevenue, 0);
   const totalNOI = properties.reduce((sum, p) => sum + p.TotalNOI, 0);
   const totalValue = properties.reduce((sum, p) => sum + p.PurchasePrice, 0);
 

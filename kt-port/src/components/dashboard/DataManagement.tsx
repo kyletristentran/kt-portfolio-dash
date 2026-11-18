@@ -176,7 +176,7 @@ export default function DataManagement() {
 
   return (
     <div className="content-card">
-      <h4 className="mb-4">📋 Monthly Performance Data Management</h4>
+      <h4 className="mb-4">Monthly Performance Data Management</h4>
       
       {/* Filters */}
       <div className="row g-3 mb-4">
@@ -340,7 +340,7 @@ export default function DataManagement() {
       {/* Detailed View Modal could be added here */}
       <div className="mt-4">
         <small className="text-muted">
-          💡 Tip: Use the filters above to narrow down your view, and click the export button to download your data as CSV.
+          Tip: Use the filters above to narrow down your view, and click the export button to download your data as CSV.
           Records can be deleted using the trash icon, but this action cannot be undone.
         </small>
       </div>

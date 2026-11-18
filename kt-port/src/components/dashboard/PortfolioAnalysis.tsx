@@ -156,7 +156,7 @@ export default function PortfolioAnalysis() {
 
   return (
     <div className="content-card">
-      <h4 className="mb-4">📊 Monthly Performance Trends</h4>
+      <h4 className="mb-4">Monthly Performance Trends</h4>
       
       {monthlyData.length === 0 ? (
         <div className="alert alert-info" role="alert">

@@ -65,7 +65,7 @@ export default function FinancialTrends() {
   if (monthlyData.length === 0) {
     return (
       <div className="content-card">
-        <h4 className="mb-4">📈 Financial Trends Analysis</h4>
+        <h4 className="mb-4">Financial Trends Analysis</h4>
         <div className="alert alert-info" role="alert">
           <h5 className="alert-heading">No Data Available</h5>
           <p>No monthly performance data found for the current year. Add some financial data to see trends.</p>
@@ -189,7 +189,7 @@ export default function FinancialTrends() {
 
   return (
     <div className="content-card">
-      <h4 className="mb-4">📈 Financial Trends Analysis</h4>
+      <h4 className="mb-4">Financial Trends Analysis</h4>
       
       <div className="row g-4">
         <div className="col-lg-6">

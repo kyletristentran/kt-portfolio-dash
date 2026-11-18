@@ -1,4 +1,4 @@
--- v2 schema — clean redesign (snake_case, RLS-first)
+-- v2 schema: clean redesign (snake_case, RLS-first)
 -- Tables: properties, monthly_financials
 
 -- ============================================================

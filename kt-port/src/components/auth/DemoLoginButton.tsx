@@ -30,7 +30,6 @@ export default function DemoLoginButton({ onSuccess, onError }: DemoLoginButtonP
       }
 
       if (data.user) {
-        console.log('Demo login successful:', data.user.email);
         onSuccess?.();
       }
     } catch (err) {

@@ -1,5 +1,5 @@
 -- Demo portfolio: 5 properties × 24 months (2024–2025).
--- Run as postgres (SQL editor / MCP) — RLS is bypassed for the table owner,
+-- Run as postgres (SQL editor / MCP). RLS is bypassed for the table owner,
 -- which is required since demo rows are ownerless and the insert policies
 -- only allow user-owned rows.
 -- Idempotent: deletes existing demo rows first.

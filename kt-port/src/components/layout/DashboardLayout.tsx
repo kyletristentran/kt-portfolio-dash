@@ -21,7 +21,7 @@ export default function DashboardLayout({ children, currentUser, onLogout }: Das
                 <div className="logo-subtitle">Real Estate Investment Analytics</div>
               </div>
               <div className="user-info">
-                <div className="user-email">{currentUser?.name || 'kylettra@usc.edu'}</div>
+                <div className="user-email">{currentUser?.name || ''}</div>
                 <button className="logout-btn" onClick={onLogout}>
                   <i className="fas fa-sign-out-alt"></i> Logout
                 </button>
