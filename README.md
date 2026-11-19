@@ -2,8 +2,6 @@
 
 A real estate portfolio dashboard. It takes property-level monthly financials and reports portfolio KPIs and trends. The application is built with Next.js and Supabase. Tenancy is defined by row-level security policies in the database, and a public demo tenant shows the product without an account.
 
-Live deployment: [kt-port.vercel.app](https://kt-port.vercel.app) (use the demo login).
-
 ## Features
 
 The dashboard tracks properties and their monthly financials and presents them in five views:
